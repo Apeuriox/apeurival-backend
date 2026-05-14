@@ -1,7 +1,6 @@
 package me.aloic.apeurival.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import me.aloic.apeurival.annotation.RequireAuth;
 import me.aloic.apeurival.entity.dto.PostDetailDTO;
 import me.aloic.apeurival.entity.dto.PostRequest;
 import me.aloic.apeurival.entity.dto.PostSummaryDTO;
@@ -37,19 +36,16 @@ public class BlogController {
     }
 
     @PostMapping
-    @RequireAuth
     public PostDetailDTO createPost(@RequestBody PostRequest request) {
         return blogService.createPost(request);
     }
 
     @PutMapping("/{id}")
-    @RequireAuth
     public PostDetailDTO updatePost(@PathVariable Long id, @RequestBody PostRequest request) {
         return blogService.updatePost(id, request);
     }
 
     @DeleteMapping("/{id}")
-    @RequireAuth
     public void deletePost(@PathVariable Long id) {
         blogService.deletePost(id);
     }
