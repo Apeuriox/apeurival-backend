@@ -15,6 +15,7 @@ import me.aloic.apeurival.service.oauth.OAuthProvider.OAuthUserInfo;
 import me.aloic.apeurival.service.oauth.OAuthProviderRegistry;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
@@ -50,6 +51,7 @@ public class OAuthServiceImpl implements OAuthService {
     }
 
     @Override
+    @Transactional
     public String handleCallback(String provider, String code, String state) {
         if (!stateStore.validate(state)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid or expired state");
@@ -72,11 +74,11 @@ public class OAuthServiceImpl implements OAuthService {
         } else {
             // auto-create account
             user = new UserPO();
-            user.setUsername(provider + "_" + userInfo.providerUserId());
+            user.setUsername(userInfo.providerUsername());
             user.setDisplayName(userInfo.providerUsername());
             user.setAvatarUrl(userInfo.avatarUrl());
             user.setPasswordHash("");
-            user.setRole("EDITOR");
+            user.setRole("USER");
             user.setCreatedAt(LocalDateTime.now());
             user.setUpdatedAt(LocalDateTime.now());
             userMapper.insert(user);
@@ -163,7 +165,9 @@ public class OAuthServiceImpl implements OAuthService {
 
     private void fillTokens(UserOAuthPO po, OAuthTokenResponse resp) {
         po.setAccessToken(resp.accessToken());
-        po.setRefreshToken(resp.refreshToken());
+        if (resp.refreshToken() != null) {
+            po.setRefreshToken(resp.refreshToken());
+        }
         if (resp.expiresIn() > 0) {
             po.setTokenExpiresAt(LocalDateTime.ofInstant(
                     Instant.now().plusSeconds(resp.expiresIn()), ZoneId.systemDefault()));

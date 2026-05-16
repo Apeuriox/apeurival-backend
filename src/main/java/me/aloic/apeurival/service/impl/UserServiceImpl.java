@@ -25,22 +25,22 @@ public class UserServiceImpl implements UserService {
     private final UserMapper userMapper;
     private final UserOAuthMapper userOAuthMapper;
     private final PasswordEncoder passwordEncoder;
-    private final boolean registrationOpen;
+    private final boolean isRegistrationOpen;
 
     public UserServiceImpl(UserMapper userMapper,
                            UserOAuthMapper userOAuthMapper,
                            PasswordEncoder passwordEncoder,
-                           @Value("${app.auth.registration-open}") boolean registrationOpen) {
+                           @Value("${app.auth.registration-open}") boolean isRegistrationOpen) {
         this.userMapper = userMapper;
         this.userOAuthMapper = userOAuthMapper;
         this.passwordEncoder = passwordEncoder;
-        this.registrationOpen = registrationOpen;
+        this.isRegistrationOpen = isRegistrationOpen;
     }
 
     @Override
     public UserDTO register(RegisterRequest req) {
-        if (!registrationOpen) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Registration is closed");
+        if (!isRegistrationOpen) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Registration temporarily closed");
         }
         if (req.getUsername() == null || req.getUsername().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Username is required");
@@ -60,7 +60,7 @@ public class UserServiceImpl implements UserService {
         po.setPasswordHash(passwordEncoder.encode(req.getPassword()));
         po.setEmail(req.getEmail());
         po.setDisplayName(req.getDisplayName() != null ? req.getDisplayName() : req.getUsername());
-        po.setRole("EDITOR");
+        po.setRole("USER");
         po.setCreatedAt(LocalDateTime.now());
         po.setUpdatedAt(LocalDateTime.now());
         userMapper.insert(po);
@@ -73,7 +73,7 @@ public class UserServiceImpl implements UserService {
         UserPO po = userMapper.selectOne(
                 new QueryWrapper<UserPO>().eq("username", req.getUsername()));
         if (po == null || !passwordEncoder.matches(req.getPassword(), po.getPasswordHash())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid username or password");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid username or password provided");
         }
         return toDTO(po);
     }

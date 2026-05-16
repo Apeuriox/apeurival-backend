@@ -6,6 +6,7 @@ import me.aloic.apeurival.entity.dto.UserDTO;
 import me.aloic.apeurival.security.JwtUtils;
 import me.aloic.apeurival.service.OAuthService;
 import me.aloic.apeurival.service.UserService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -21,13 +22,16 @@ public class AuthController {
     private final UserService userService;
     private final OAuthService oAuthService;
     private final JwtUtils jwtUtils;
+    private final String frontendUrl;
 
     public AuthController(UserService userService,
                           OAuthService oAuthService,
-                          JwtUtils jwtUtils) {
+                          JwtUtils jwtUtils,
+                          @Value("${app.frontend-url}") String frontendUrl) {
         this.userService = userService;
         this.oAuthService = oAuthService;
         this.jwtUtils = jwtUtils;
+        this.frontendUrl = frontendUrl;
     }
 
     @PostMapping("/register")
@@ -58,7 +62,7 @@ public class AuthController {
             @RequestParam String state) {
         String token = oAuthService.handleCallback(provider, code, state);
         return ResponseEntity.status(HttpStatus.FOUND)
-                .location(URI.create("/oauth-callback?token=" + token))
+                .location(URI.create(frontendUrl + "/oauth-callback?token=" + token))
                 .build();
     }
 

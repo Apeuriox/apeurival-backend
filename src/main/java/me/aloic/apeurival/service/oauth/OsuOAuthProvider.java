@@ -70,10 +70,11 @@ public class OsuOAuthProvider implements OAuthProvider {
 
         @SuppressWarnings("unchecked")
         Map<String, Object> data = resp.getBody();
+        Number expiresIn = (Number) data.get("expires_in");
         return new OAuthTokenResponse(
                 (String) data.get("access_token"),
                 (String) data.get("refresh_token"),
-                ((Number) data.get("expires_in")).longValue());
+                expiresIn != null ? expiresIn.longValue() : 0);
     }
 
     @Override
