@@ -1,5 +1,7 @@
 package me.aloic.apeurival.controller;
 
+import lombok.extern.slf4j.Slf4j;
+import me.aloic.apeurival.config.UploadPathConfig;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/upload")
 public class UploadController {
@@ -27,17 +30,12 @@ public class UploadController {
     private final List<String> allowedTypes;
 
     public UploadController(
-            @Value("${app.upload.path}") String uploadPath,
+            UploadPathConfig uploadPathConfig,
             @Value("${app.upload.image-max-size}") long maxSize,
             @Value("${app.upload.allowed-types}") List<String> allowedTypes) {
         this.maxSize = maxSize;
         this.allowedTypes = allowedTypes;
-        this.uploadDir = Paths.get(uploadPath, "images").toAbsolutePath();
-        try {
-            Files.createDirectories(uploadDir);
-        } catch (IOException e) {
-            throw new RuntimeException("Cannot create upload directory", e);
-        }
+        this.uploadDir = Paths.get(uploadPathConfig.resolve(), "images").toAbsolutePath();
     }
 
     @PostMapping("/image")

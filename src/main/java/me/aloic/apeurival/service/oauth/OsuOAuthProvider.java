@@ -1,5 +1,6 @@
 package me.aloic.apeurival.service.oauth;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -13,6 +14,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
 
+@Slf4j
 @Component
 public class OsuOAuthProvider implements OAuthProvider {
 
@@ -70,6 +72,7 @@ public class OsuOAuthProvider implements OAuthProvider {
 
         @SuppressWarnings("unchecked")
         Map<String, Object> data = resp.getBody();
+        log.info("osu! token exchange OK, expires_in={}", data.get("expires_in"));
         Number expiresIn = (Number) data.get("expires_in");
         return new OAuthTokenResponse(
                 (String) data.get("access_token"),
@@ -90,6 +93,7 @@ public class OsuOAuthProvider implements OAuthProvider {
 
         @SuppressWarnings("unchecked")
         Map<String, Object> data = resp.getBody();
+        log.info("osu! user info OK: id={}, username={}", data.get("id"), data.get("username"));
         return new OAuthUserInfo(
                 String.valueOf(data.get("id")),
                 (String) data.get("username"),

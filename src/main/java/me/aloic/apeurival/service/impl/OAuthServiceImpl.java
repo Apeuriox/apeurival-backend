@@ -1,6 +1,7 @@
 package me.aloic.apeurival.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import lombok.extern.slf4j.Slf4j;
 import me.aloic.apeurival.entity.dto.UserDTO;
 import me.aloic.apeurival.entity.mapper.UserMapper;
 import me.aloic.apeurival.entity.mapper.UserOAuthMapper;
@@ -22,6 +23,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 
+@Slf4j
 @Service
 public class OAuthServiceImpl implements OAuthService {
 
@@ -69,9 +71,11 @@ public class OAuthServiceImpl implements OAuthService {
 
         UserPO user;
         if (binding != null) {
+            log.info("OAuth {} login: existing user id={}", provider, binding.getUserId());
             user = userMapper.selectById(binding.getUserId());
             updateTokens(binding, tokenResp);
         } else {
+            log.info("OAuth {} login: auto-creating user for providerUserId={}", provider, userInfo.providerUserId());
             // auto-create account
             user = new UserPO();
             user.setUsername(userInfo.providerUsername());
