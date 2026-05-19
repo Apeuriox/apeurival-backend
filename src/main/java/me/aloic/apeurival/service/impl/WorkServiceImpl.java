@@ -10,11 +10,15 @@ import me.aloic.apeurival.entity.mapper.CodeWorkMapper;
 import me.aloic.apeurival.entity.mapper.ImageWorkMapper;
 import me.aloic.apeurival.entity.mapper.UserMapper;
 import me.aloic.apeurival.entity.mapper.VideoWorkMapper;
+import me.aloic.apeurival.entity.mapper.WorkImageMapper;
+import me.aloic.apeurival.entity.mapper.WorkMomentMapper;
 import me.aloic.apeurival.entity.mapper.WorkMapper;
 import me.aloic.apeurival.entity.po.CodeWorkPO;
 import me.aloic.apeurival.entity.po.ImageWorkPO;
 import me.aloic.apeurival.entity.po.UserPO;
 import me.aloic.apeurival.entity.po.VideoWorkPO;
+import me.aloic.apeurival.entity.po.WorkImagePO;
+import me.aloic.apeurival.entity.po.WorkMomentPO;
 import me.aloic.apeurival.entity.po.WorkPO;
 import me.aloic.apeurival.service.WorkService;
 import org.springframework.http.HttpStatus;
@@ -23,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class WorkServiceImpl implements WorkService {
@@ -31,17 +36,23 @@ public class WorkServiceImpl implements WorkService {
     private final CodeWorkMapper codeWorkMapper;
     private final ImageWorkMapper imageWorkMapper;
     private final VideoWorkMapper videoWorkMapper;
+    private final WorkImageMapper workImageMapper;
+    private final WorkMomentMapper workMomentMapper;
     private final UserMapper userMapper;
 
     public WorkServiceImpl(WorkMapper workMapper,
                            CodeWorkMapper codeWorkMapper,
                            ImageWorkMapper imageWorkMapper,
                            VideoWorkMapper videoWorkMapper,
+                           WorkImageMapper workImageMapper,
+                           WorkMomentMapper workMomentMapper,
                            UserMapper userMapper) {
         this.workMapper = workMapper;
         this.codeWorkMapper = codeWorkMapper;
         this.imageWorkMapper = imageWorkMapper;
         this.videoWorkMapper = videoWorkMapper;
+        this.workImageMapper = workImageMapper;
+        this.workMomentMapper = workMomentMapper;
         this.userMapper = userMapper;
     }
 
@@ -117,12 +128,22 @@ public class WorkServiceImpl implements WorkService {
         CodeWorkPO code = null;
         ImageWorkPO image = null;
         VideoWorkPO video = null;
+        List<WorkImagePO> images = null;
+        List<WorkMomentPO> moments = null;
         switch (po.getType()) {
             case "CODE" -> code = codeWorkMapper.selectById(po.getId());
-            case "IMAGE" -> image = imageWorkMapper.selectById(po.getId());
+            case "IMAGE" -> {
+                image = imageWorkMapper.selectById(po.getId());
+                images = workImageMapper.selectList(
+                        new QueryWrapper<WorkImagePO>().eq("work_id", po.getId())
+                                .orderByAsc("sort_order"));
+            }
             case "VIDEO" -> video = videoWorkMapper.selectById(po.getId());
         }
-        return WorkConverter.toDetail(po, author, code, image, video);
+        moments = workMomentMapper.selectList(
+                new QueryWrapper<WorkMomentPO>().eq("work_id", po.getId())
+                        .orderByAsc("sort_order"));
+        return WorkConverter.toDetail(po, author, code, image, video, images, moments);
     }
 
     private void insertSubRecord(Long workId, WorkRequest req) {
@@ -136,11 +157,22 @@ public class WorkServiceImpl implements WorkService {
         } else if ("IMAGE".equals(type)) {
             ImageWorkPO sub = new ImageWorkPO();
             sub.setWorkId(workId);
-            sub.setImageUrl(req.getImageUrl());
             sub.setWidth(req.getWidth());
             sub.setHeight(req.getHeight());
             sub.setFormat(req.getFormat());
             imageWorkMapper.insert(sub);
+
+            if (req.getImages() != null) {
+                int order = 0;
+                for (WorkRequest.ImageRequest img : req.getImages()) {
+                    WorkImagePO wi = new WorkImagePO();
+                    wi.setWorkId(workId);
+                    wi.setImageUrl(img.getImageUrl());
+                    wi.setLabel(img.getLabel());
+                    wi.setSortOrder(order++);
+                    workImageMapper.insert(wi);
+                }
+            }
         } else if ("VIDEO".equals(type)) {
             VideoWorkPO sub = new VideoWorkPO();
             sub.setWorkId(workId);
@@ -148,12 +180,27 @@ public class WorkServiceImpl implements WorkService {
             sub.setPlatform(req.getPlatform() != null ? req.getPlatform() : "bilibili");
             videoWorkMapper.insert(sub);
         }
+
+        if (req.getMoments() != null) {
+            int order = 0;
+            for (WorkRequest.MomentRequest m : req.getMoments()) {
+                WorkMomentPO wm = new WorkMomentPO();
+                wm.setWorkId(workId);
+                wm.setImageUrl(m.getImageUrl());
+                wm.setContent(m.getContent());
+                wm.setMomentTime(m.getMomentTime());
+                wm.setSortOrder(order++);
+                workMomentMapper.insert(wm);
+            }
+        }
     }
 
     private void deleteSubRecord(Long workId, String type) {
+        workMomentMapper.delete(new QueryWrapper<WorkMomentPO>().eq("work_id", workId));
         if ("CODE".equals(type)) {
             codeWorkMapper.deleteById(workId);
         } else if ("IMAGE".equals(type)) {
+            workImageMapper.delete(new QueryWrapper<WorkImagePO>().eq("work_id", workId));
             imageWorkMapper.deleteById(workId);
         } else if ("VIDEO".equals(type)) {
             videoWorkMapper.deleteById(workId);

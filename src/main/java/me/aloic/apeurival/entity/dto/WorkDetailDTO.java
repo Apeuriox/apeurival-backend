@@ -19,6 +19,7 @@ public class WorkDetailDTO {
     private CodeContent code;
     private ImageContent image;
     private VideoContent video;
+    private TimelineContent timeline;
 
     @Data
     public static class AuthorBrief {
@@ -37,10 +38,17 @@ public class WorkDetailDTO {
 
     @Data
     public static class ImageContent {
-        private String imageUrl;
         private Integer width;
         private Integer height;
         private String format;
+        private List<ImageItem> images;
+    }
+
+    @Data
+    public static class ImageItem {
+        private String imageUrl;
+        private String label;
+        private Integer sortOrder;
     }
 
     @Data
@@ -48,5 +56,18 @@ public class WorkDetailDTO {
         private String bvid;
         private String embedUrl;
         private String platform;
+    }
+
+    @Data
+    public static class TimelineContent {
+        private List<Moment> moments;
+    }
+
+    @Data
+    public static class Moment {
+        private String imageUrl;
+        private String content;
+        private LocalDate momentTime;
+        private Integer sortOrder;
     }
 }
