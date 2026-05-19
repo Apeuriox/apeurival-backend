@@ -19,10 +19,9 @@ public class WorkPO {
     private String title;
     private String description;
     private String type;
-    private String contentUrl;
     private String coverUrl;
     private String tags;
-    private String authorName;
+    private Long authorId;
     private Integer status = 0;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

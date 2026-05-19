@@ -5,6 +5,7 @@ import me.aloic.apeurival.entity.dto.WorkDetailDTO;
 import me.aloic.apeurival.entity.dto.WorkRequest;
 import me.aloic.apeurival.entity.dto.WorkSummaryDTO;
 import me.aloic.apeurival.service.WorkService;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -31,13 +32,16 @@ public class WorkController {
     }
 
     @PostMapping
-    public WorkDetailDTO createWork(@RequestBody WorkRequest request) {
-        return workService.createWork(request);
+    public WorkDetailDTO createWork(@RequestBody WorkRequest request, Authentication auth) {
+        Long userId = Long.valueOf(auth.getPrincipal().toString());
+        return workService.createWork(request, userId);
     }
 
     @PutMapping("/{id}")
-    public WorkDetailDTO updateWork(@PathVariable Long id, @RequestBody WorkRequest request) {
-        return workService.updateWork(id, request);
+    public WorkDetailDTO updateWork(@PathVariable Long id, @RequestBody WorkRequest request,
+                                     Authentication auth) {
+        Long userId = Long.valueOf(auth.getPrincipal().toString());
+        return workService.updateWork(id, request, userId);
     }
 
     @DeleteMapping("/{id}")

@@ -2,6 +2,7 @@ package me.aloic.apeurival.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import lombok.extern.slf4j.Slf4j;
+import me.aloic.apeurival.converter.UserConverter;
 import me.aloic.apeurival.entity.dto.UserDTO;
 import me.aloic.apeurival.entity.mapper.UserMapper;
 import me.aloic.apeurival.entity.mapper.UserOAuthMapper;
@@ -22,6 +23,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -133,15 +135,9 @@ public class OAuthServiceImpl implements OAuthService {
         userOAuthMapper.insert(binding);
 
         UserPO user = userMapper.selectById(userId);
-        UserDTO dto = new UserDTO();
-        dto.setId(user.getId());
-        dto.setUsername(user.getUsername());
-        dto.setEmail(user.getEmail());
-        dto.setDisplayName(user.getDisplayName());
-        dto.setAvatarUrl(user.getAvatarUrl());
-        dto.setRole(user.getRole());
-        dto.setCreatedAt(user.getCreatedAt());
-        return dto;
+        List<UserOAuthPO> links = userOAuthMapper.selectList(
+                new QueryWrapper<UserOAuthPO>().eq("user_id", userId));
+        return UserConverter.toDTO(user, links);
     }
 
     @Override

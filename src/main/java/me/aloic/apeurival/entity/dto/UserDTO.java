@@ -12,6 +12,7 @@ public class UserDTO {
     private String email;
     private String displayName;
     private String avatarUrl;
+    private String profileUrl;
     private String role;
     private LocalDateTime createdAt;
     private List<LinkedAccount> linkedAccounts;

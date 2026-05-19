@@ -12,6 +12,7 @@ public class WorkSummaryDTO {
     private String type;
     private String coverUrl;
     private List<String> tags;
-    private String authorName;
+    private WorkDetailDTO.AuthorBrief author;
     private LocalDate date;
+
 }

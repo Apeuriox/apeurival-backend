@@ -11,9 +11,9 @@ public interface WorkService {
 
     WorkDetailDTO getWork(Long id);
 
-    WorkDetailDTO createWork(WorkRequest request);
+    WorkDetailDTO createWork(WorkRequest request, Long authorId);
 
-    WorkDetailDTO updateWork(Long id, WorkRequest request);
+    WorkDetailDTO updateWork(Long id, WorkRequest request, Long authorId);
 
     void deleteWork(Long id);
 }

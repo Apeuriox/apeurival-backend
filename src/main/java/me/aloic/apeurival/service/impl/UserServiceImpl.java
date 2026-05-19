@@ -1,6 +1,7 @@
 package me.aloic.apeurival.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import me.aloic.apeurival.converter.UserConverter;
 import me.aloic.apeurival.entity.dto.LoginRequest;
 import me.aloic.apeurival.entity.dto.RegisterRequest;
 import me.aloic.apeurival.entity.dto.UserDTO;
@@ -16,7 +17,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.List;
 
 @Service
@@ -65,7 +65,7 @@ public class UserServiceImpl implements UserService {
         po.setUpdatedAt(LocalDateTime.now());
         userMapper.insert(po);
 
-        return toDTO(po);
+        return UserConverter.toDTO(po, List.of());
     }
 
     @Override
@@ -75,7 +75,7 @@ public class UserServiceImpl implements UserService {
         if (po == null || !passwordEncoder.matches(req.getPassword(), po.getPasswordHash())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid username or password provided");
         }
-        return toDTO(po);
+        return UserConverter.toDTO(po, linkedAccounts(po.getId()));
     }
 
     @Override
@@ -84,32 +84,11 @@ public class UserServiceImpl implements UserService {
         if (po == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
         }
-        return toDTO(po);
+        return UserConverter.toDTO(po, linkedAccounts(userId));
     }
 
-    UserDTO toDTO(UserPO po) {
-        UserDTO dto = new UserDTO();
-        dto.setId(po.getId());
-        dto.setUsername(po.getUsername());
-        dto.setEmail(po.getEmail());
-        dto.setDisplayName(po.getDisplayName());
-        dto.setAvatarUrl(po.getAvatarUrl());
-        dto.setRole(po.getRole());
-        dto.setCreatedAt(po.getCreatedAt());
-
-        List<UserOAuthPO> links = userOAuthMapper.selectList(
-                new QueryWrapper<UserOAuthPO>().eq("user_id", po.getId()));
-        if (!links.isEmpty()) {
-            dto.setLinkedAccounts(links.stream().map(l -> {
-                UserDTO.LinkedAccount la = new UserDTO.LinkedAccount();
-                la.setProvider(l.getProvider());
-                la.setProviderUsername(l.getProviderUsername());
-                la.setLinkedAt(l.getLinkedAt());
-                return la;
-            }).toList());
-        } else {
-            dto.setLinkedAccounts(Collections.emptyList());
-        }
-        return dto;
+    private List<UserOAuthPO> linkedAccounts(Long userId) {
+        return userOAuthMapper.selectList(
+                new QueryWrapper<UserOAuthPO>().eq("user_id", userId));
     }
 }

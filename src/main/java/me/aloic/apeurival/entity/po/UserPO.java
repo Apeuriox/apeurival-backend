@@ -22,6 +22,7 @@ public class UserPO {
     private String displayName;
     private String avatarUrl;
     private String role;
+    private String profileUrl;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
