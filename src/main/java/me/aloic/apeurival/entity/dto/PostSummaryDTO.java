@@ -13,5 +13,6 @@ public class PostSummaryDTO {
     private String excerpt;
     private List<String> tags;
     private LocalDate date;
+    private PostDetailDTO.AuthorBrief author;
     private String coverUrl;
 }

@@ -45,6 +45,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PUT, "/api/works/**").hasAnyRole("EDITOR", "ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/works/**").hasAnyRole("EDITOR", "ADMIN")
                 .requestMatchers("/api/upload/**").hasAnyRole("EDITOR", "ADMIN")
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().permitAll()
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

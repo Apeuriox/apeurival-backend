@@ -16,9 +16,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @Slf4j
 @RestController
@@ -53,16 +55,33 @@ public class UploadController {
                     "Unsupported file type: " + contentType);
         }
 
-        String ext = extension(contentType);
-        String filename = UUID.randomUUID().toString().replace("-", "") + ext;
         try {
-            Files.copy(file.getInputStream(), uploadDir.resolve(filename));
+            byte[] bytes = file.getBytes();
+            String hash = sha256(bytes);
+            String ext = extension(contentType);
+            String filename = hash + ext;
+            Path target = uploadDir.resolve(filename);
+
+            if (Files.notExists(target)) {
+                Files.write(target, bytes);
+                log.info("Saved: {}", filename);
+            } else {
+                log.info("Dedup: {} already exists", filename);
+            }
+
+            return ResponseEntity.ok(Map.of("url", "/uploads/images/" + filename));
         } catch (IOException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to save file");
         }
+    }
 
-        String url = "/uploads/images/" + filename;
-        return ResponseEntity.ok(Map.of("url", url));
+    private static String sha256(byte[] bytes) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            return HexFormat.of().formatHex(md.digest(bytes));
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private static String extension(String contentType) {

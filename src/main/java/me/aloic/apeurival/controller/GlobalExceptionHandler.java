@@ -8,6 +8,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @Slf4j
 @RestControllerAdvice
@@ -30,6 +31,13 @@ public class GlobalExceptionHandler {
         log.warn("Access denied: {}", ex.getMessage());
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
         pd.setProperty("status", 403);
+        return pd;
+    }
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ProblemDetail handleResourcesNotFound(NoResourceFoundException ex) {
+        log.warn("Static resources not found: {}", ex.getMessage());
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+        pd.setProperty("status", 404);
         return pd;
     }
 

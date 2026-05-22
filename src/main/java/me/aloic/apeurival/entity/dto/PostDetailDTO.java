@@ -11,10 +11,19 @@ public class PostDetailDTO {
     private String slug;
     private String title;
     private String excerpt;
-    private String contentHtml;
+    private String contentMd;
     private List<String> tags;
     private LocalDate date;
     private String coverUrl;
+    private AuthorBrief author;
     private PostDetailDTO prev;
     private PostDetailDTO next;
+
+    @Data
+    public static class AuthorBrief {
+        private Long id;
+        private String displayName;
+        private String avatarUrl;
+        private String profileUrl;
+    }
 }

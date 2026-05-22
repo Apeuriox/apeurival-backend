@@ -2,6 +2,7 @@ package me.aloic.apeurival.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import lombok.extern.slf4j.Slf4j;
 import me.aloic.apeurival.converter.WorkConverter;
 import me.aloic.apeurival.entity.dto.WorkDetailDTO;
 import me.aloic.apeurival.entity.dto.WorkRequest;
@@ -29,6 +30,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Slf4j
 @Service
 public class WorkServiceImpl implements WorkService {
 
@@ -211,6 +213,7 @@ public class WorkServiceImpl implements WorkService {
         if (req.getTitle() != null) po.setTitle(req.getTitle());
         if (req.getDescription() != null) po.setDescription(req.getDescription());
         if (req.getType() != null) po.setType(req.getType().toUpperCase());
+        if (req.getContentMd() != null) po.setContentMd(req.getContentMd());
         if (req.getCoverUrl() != null) po.setCoverUrl(req.getCoverUrl());
         if (req.getTags() != null) po.setTags(req.getTags());
         if (req.getStatus() != null) po.setStatus(req.getStatus());

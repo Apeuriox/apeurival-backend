@@ -11,7 +11,7 @@ public interface BlogService {
 
     PostDetailDTO getPostBySlug(String slug, String lang);
 
-    PostDetailDTO createPost(PostRequest request);
+    PostDetailDTO createPost(PostRequest request, Long authorId);
 
     PostDetailDTO updatePost(Long id, PostRequest request);
 

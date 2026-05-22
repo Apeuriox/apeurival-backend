@@ -20,6 +20,7 @@ public class WorkPO {
     private String description;
     private String type;
     private String coverUrl;
+    private String contentMd;
     private String tags;
     private Long authorId;
     private Integer status = 0;

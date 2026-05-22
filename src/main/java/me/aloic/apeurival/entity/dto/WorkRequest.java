@@ -14,6 +14,9 @@ public class WorkRequest {
     private String tags;
     private Integer status;
 
+    // COMMON
+    private String contentMd;
+
     // CODE
     private String repoUrl;
     private String languages;
