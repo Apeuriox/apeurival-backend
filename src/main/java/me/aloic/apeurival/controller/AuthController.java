@@ -91,4 +91,15 @@ public class AuthController {
         Long userId = Long.valueOf(auth.getPrincipal().toString());
         return ResponseEntity.ok(userService.getCurrentUser(userId));
     }
+
+    @PutMapping("/password")
+    public ResponseEntity<Map<String, Object>> changePassword(
+            @RequestBody Map<String, String> body,
+            Authentication auth) {
+        Long userId = Long.valueOf(auth.getPrincipal().toString());
+        userService.changePassword(userId,
+                body.get("oldPassword"),
+                body.get("newPassword"));
+        return ResponseEntity.ok(Map.of("changed", true));
+    }
 }

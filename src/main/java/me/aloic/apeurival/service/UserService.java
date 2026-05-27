@@ -11,4 +11,6 @@ public interface UserService {
     UserDTO login(LoginRequest request);
 
     UserDTO getCurrentUser(Long userId);
+
+    void changePassword(Long userId, String oldPassword, String newPassword);
 }

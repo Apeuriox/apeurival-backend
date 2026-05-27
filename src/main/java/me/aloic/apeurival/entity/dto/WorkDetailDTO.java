@@ -10,7 +10,7 @@ public class WorkDetailDTO {
     private Long id;
     private String title;
     private String description;
-    private String contentHtml;
+    private String contentMd;
     private String type;
     private String coverUrl;
     private List<String> tags;

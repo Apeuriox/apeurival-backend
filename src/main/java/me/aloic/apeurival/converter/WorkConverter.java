@@ -9,18 +9,12 @@ import me.aloic.apeurival.entity.po.VideoWorkPO;
 import me.aloic.apeurival.entity.po.WorkImagePO;
 import me.aloic.apeurival.entity.po.WorkMomentPO;
 import me.aloic.apeurival.entity.po.WorkPO;
-import org.commonmark.node.Node;
-import org.commonmark.parser.Parser;
-import org.commonmark.renderer.html.HtmlRenderer;
-
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 public final class WorkConverter {
 
-    private static final Parser mdParser = Parser.builder().build();
-    private static final HtmlRenderer htmlRenderer = HtmlRenderer.builder().build();
 
     private WorkConverter() {}
 
@@ -43,7 +37,7 @@ public final class WorkConverter {
         dto.setId(po.getId());
         dto.setTitle(po.getTitle());
         dto.setDescription(po.getDescription());
-        dto.setContentHtml(renderMarkdown(po.getContentMd()));
+        dto.setContentMd(po.getContentMd());
         dto.setType(po.getType());
         dto.setCoverUrl(po.getCoverUrl());
         dto.setTags(splitTags(po.getTags()));
@@ -103,11 +97,6 @@ public final class WorkConverter {
                 .toList();
     }
 
-    private static String renderMarkdown(String md) {
-        if (md == null || md.isBlank()) return null;
-        Node document = mdParser.parse(md);
-        return htmlRenderer.render(document);
-    }
 
     private static WorkDetailDTO.AuthorBrief authorBrief(UserPO user) {
         if (user == null) return null;

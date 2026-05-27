@@ -87,6 +87,23 @@ public class UserServiceImpl implements UserService {
         return UserConverter.toDTO(po, linkedAccounts(userId));
     }
 
+    @Override
+    public void changePassword(Long userId, String oldPassword, String newPassword) {
+        UserPO po = userMapper.selectById(userId);
+        if (po == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+        }
+        if (!passwordEncoder.matches(oldPassword, po.getPasswordHash())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Old password is incorrect");
+        }
+        if (newPassword == null || newPassword.length() < 6) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Password must be at least 6 characters");
+        }
+        po.setPasswordHash(passwordEncoder.encode(newPassword));
+        po.setUpdatedAt(LocalDateTime.now());
+        userMapper.updateById(po);
+    }
+
     private List<UserOAuthPO> linkedAccounts(Long userId) {
         return userOAuthMapper.selectList(
                 new QueryWrapper<UserOAuthPO>().eq("user_id", userId));
