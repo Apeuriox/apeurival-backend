@@ -49,14 +49,16 @@ public class BlogController {
     }
 
     @PutMapping("/{id}")
-    public PostDetailDTO updatePost(@PathVariable Long id, @RequestBody PostRequest request) {
+    public PostDetailDTO updatePost(@PathVariable Long id, @RequestBody PostRequest request, Authentication auth) {
         log.info("[PUT] handling updatePost /api/posts/{}",id);
-        return blogService.updatePost(id, request);
+        Long userId = Long.valueOf(auth.getPrincipal().toString());
+        return blogService.updatePost(id, request, userId);
     }
 
     @DeleteMapping("/{id}")
-    public void deletePost(@PathVariable Long id) {
+    public void deletePost(@PathVariable Long id, Authentication auth) {
         log.info("[DELETE] handling deletePost /api/posts/{}",id);
-        blogService.deletePost(id);
+        Long userId = Long.valueOf(auth.getPrincipal().toString());
+        blogService.deletePost(id, userId);
     }
 }

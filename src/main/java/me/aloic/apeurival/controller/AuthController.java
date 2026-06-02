@@ -4,6 +4,7 @@ import me.aloic.apeurival.entity.dto.LoginRequest;
 import me.aloic.apeurival.entity.dto.RegisterRequest;
 import me.aloic.apeurival.entity.dto.UserDTO;
 import me.aloic.apeurival.security.JwtUtils;
+import me.aloic.apeurival.security.OAuthStateStore;
 import me.aloic.apeurival.service.OAuthService;
 import me.aloic.apeurival.service.UserService;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.net.URI;
 import java.util.Map;
@@ -21,15 +23,18 @@ public class AuthController {
 
     private final UserService userService;
     private final OAuthService oAuthService;
+    private final OAuthStateStore stateStore;
     private final JwtUtils jwtUtils;
     private final String frontendUrl;
 
     public AuthController(UserService userService,
                           OAuthService oAuthService,
+                          OAuthStateStore stateStore,
                           JwtUtils jwtUtils,
                           @Value("${app.frontend-url}") String frontendUrl) {
         this.userService = userService;
         this.oAuthService = oAuthService;
+        this.stateStore = stateStore;
         this.jwtUtils = jwtUtils;
         this.frontendUrl = frontendUrl;
     }
@@ -61,9 +66,19 @@ public class AuthController {
             @RequestParam String code,
             @RequestParam String state) {
         String token = oAuthService.handleCallback(provider, code, state);
+        String authCode = stateStore.storeToken(token);
         return ResponseEntity.status(HttpStatus.FOUND)
-                .location(URI.create(frontendUrl + "/oauth-callback?token=" + token))
+                .location(URI.create(frontendUrl + "/oauth-callback?code=" + authCode))
                 .build();
+    }
+
+    @PostMapping("/oauth/exchange")
+    public ResponseEntity<Map<String, Object>> exchangeToken(@RequestParam String code) {
+        String token = stateStore.retrieveToken(code);
+        if (token == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid or expired exchange code");
+        }
+        return ResponseEntity.ok(Map.of("token", token));
     }
 
     @PostMapping("/oauth/{provider}/link")

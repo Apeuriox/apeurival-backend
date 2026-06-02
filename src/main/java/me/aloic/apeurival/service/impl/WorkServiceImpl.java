@@ -106,7 +106,6 @@ public class WorkServiceImpl implements WorkService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Work not found");
         }
         applyRequest(po, req);
-        po.setAuthorId(authorId);
         po.setUpdatedAt(LocalDateTime.now());
         workMapper.updateById(po);
         deleteSubRecord(id, po.getType());

@@ -63,6 +63,13 @@ public class BlogServiceImpl implements BlogService {
 
     @Override
     public PostDetailDTO createPost(PostRequest request, Long authorId) {
+        if (request.getSlug() != null && !request.getSlug().isBlank()) {
+            BlogPostPO existing = blogPostMapper.selectOne(
+                    new QueryWrapper<BlogPostPO>().eq("slug", request.getSlug()));
+            if (existing != null) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Slug already exists: " + request.getSlug());
+            }
+        }
         BlogPostPO po = new BlogPostPO();
         applyRequest(po, request);
         po.setAuthorId(authorId);
@@ -78,11 +85,12 @@ public class BlogServiceImpl implements BlogService {
     }
 
     @Override
-    public PostDetailDTO updatePost(Long id, PostRequest request) {
+    public PostDetailDTO updatePost(Long id, PostRequest request, Long userId) {
         BlogPostPO po = blogPostMapper.selectById(id);
         if (po == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found: id=" + id);
         }
+        checkOwnership(po, userId);
         applyRequest(po, request);
         po.setUpdatedAt(LocalDateTime.now());
         if (po.getStatus() != null && po.getStatus() == 1 && po.getPublishedAt() == null) {
@@ -95,13 +103,21 @@ public class BlogServiceImpl implements BlogService {
     }
 
     @Override
-    public void deletePost(Long id) {
+    public void deletePost(Long id, Long userId) {
         BlogPostPO po = blogPostMapper.selectById(id);
         if (po == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found: id=" + id);
         }
+        checkOwnership(po, userId);
         log.info("successfully deleted post {}",id);
         blogPostMapper.deleteById(id);
+    }
+
+    private void checkOwnership(BlogPostPO po, Long userId) {
+        if (po.getAuthorId() != null && po.getAuthorId().equals(userId)) return;
+        UserPO caller = userMapper.selectById(userId);
+        if (caller != null && "ADMIN".equals(caller.getRole())) return;
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only manage your own posts");
     }
 
     private BlogPostPO fetchPrev(BlogPostPO current) {

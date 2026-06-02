@@ -61,7 +61,7 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleGeneral(Exception ex) {
         log.error("Unhandled exception", ex);
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(
-                HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
+                HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error");
         pd.setProperty("status", 500);
         return pd;
     }

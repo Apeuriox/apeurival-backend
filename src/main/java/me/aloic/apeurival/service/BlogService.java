@@ -13,7 +13,7 @@ public interface BlogService {
 
     PostDetailDTO createPost(PostRequest request, Long authorId);
 
-    PostDetailDTO updatePost(Long id, PostRequest request);
+    PostDetailDTO updatePost(Long id, PostRequest request, Long userId);
 
-    void deletePost(Long id);
+    void deletePost(Long id, Long userId);
 }

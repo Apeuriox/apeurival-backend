@@ -24,6 +24,19 @@ public class OAuthStateStore {
         return entry != null;
     }
 
+    public String storeToken(String jwt) {
+        cleanExpired();
+        String code = UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+        store.put(code, new StateEntry(jwt, System.currentTimeMillis()));
+        return code;
+    }
+
+    public String retrieveToken(String code) {
+        cleanExpired();
+        StateEntry entry = store.remove(code);
+        return entry != null ? entry.value : null;
+    }
+
     private void cleanExpired() {
         long now = System.currentTimeMillis();
         store.values().removeIf(e -> now - e.createdAt > 300_000); // 5 min
