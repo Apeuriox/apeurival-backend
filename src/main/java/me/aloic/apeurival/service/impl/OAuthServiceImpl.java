@@ -10,6 +10,7 @@ import me.aloic.apeurival.entity.po.UserOAuthPO;
 import me.aloic.apeurival.entity.po.UserPO;
 import me.aloic.apeurival.security.JwtUtils;
 import me.aloic.apeurival.security.OAuthStateStore;
+import me.aloic.apeurival.security.TokenEncryptor;
 import me.aloic.apeurival.service.OAuthService;
 import me.aloic.apeurival.service.oauth.OAuthProvider;
 import me.aloic.apeurival.service.oauth.OAuthProvider.OAuthTokenResponse;
@@ -34,17 +35,20 @@ public class OAuthServiceImpl implements OAuthService {
     private final UserMapper userMapper;
     private final UserOAuthMapper userOAuthMapper;
     private final JwtUtils jwtUtils;
+    private final TokenEncryptor tokenEncryptor;
 
     public OAuthServiceImpl(OAuthProviderRegistry registry,
                             OAuthStateStore stateStore,
                             UserMapper userMapper,
                             UserOAuthMapper userOAuthMapper,
+                            TokenEncryptor tokenEncryptor,
                             JwtUtils jwtUtils) {
         this.registry = registry;
         this.stateStore = stateStore;
         this.userMapper = userMapper;
         this.userOAuthMapper = userOAuthMapper;
         this.jwtUtils = jwtUtils;
+        this.tokenEncryptor=tokenEncryptor;
     }
 
     @Override
@@ -164,9 +168,9 @@ public class OAuthServiceImpl implements OAuthService {
     }
 
     private void fillTokens(UserOAuthPO po, OAuthTokenResponse resp) {
-        po.setAccessToken(resp.accessToken());
+        po.setAccessToken(tokenEncryptor.encrypt(resp.accessToken()));
         if (resp.refreshToken() != null) {
-            po.setRefreshToken(resp.refreshToken());
+            po.setRefreshToken(tokenEncryptor.encrypt(resp.refreshToken()));
         }
         if (resp.expiresIn() > 0) {
             po.setTokenExpiresAt(LocalDateTime.ofInstant(

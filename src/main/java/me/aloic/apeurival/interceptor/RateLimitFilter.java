@@ -1,4 +1,4 @@
-package me.aloic.apeurival.security;
+package me.aloic.apeurival.interceptor;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -80,9 +80,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
         if ("/api/auth/password".equals(uri)) return true;
 
         // image upload: 30 per 5 min → 5 min lock
-        if ("/api/upload/image".equals(uri)) return true;
-
-        return false;
+        return "/api/upload/image".equals(uri);
     }
 
     private static class AttemptWindow {

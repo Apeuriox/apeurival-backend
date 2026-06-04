@@ -1,7 +1,7 @@
 package me.aloic.apeurival.config;
 
 import me.aloic.apeurival.security.JwtAuthFilter;
-import me.aloic.apeurival.security.RateLimitFilter;
+import me.aloic.apeurival.interceptor.RateLimitFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;

@@ -1,4 +1,4 @@
-package me.aloic.apeurival.controller;
+package me.aloic.apeurival.exception;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
