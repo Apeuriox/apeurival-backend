@@ -13,4 +13,6 @@ public interface UserService {
     UserDTO getCurrentUser(Long userId);
 
     void changePassword(Long userId, String oldPassword, String newPassword);
+
+    UserDTO updateAvatar(Long userId, String avatarUrl);
 }

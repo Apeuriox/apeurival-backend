@@ -93,7 +93,8 @@ public class UserServiceImpl implements UserService {
         if (po == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
         }
-        if (!passwordEncoder.matches(oldPassword, po.getPasswordHash())) {
+        boolean hasPassword = po.getPasswordHash() != null && !po.getPasswordHash().isBlank();
+        if (hasPassword && !passwordEncoder.matches(oldPassword, po.getPasswordHash())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Old password is incorrect");
         }
         if (newPassword == null || newPassword.length() < 6) {
@@ -102,6 +103,18 @@ public class UserServiceImpl implements UserService {
         po.setPasswordHash(passwordEncoder.encode(newPassword));
         po.setUpdatedAt(LocalDateTime.now());
         userMapper.updateById(po);
+    }
+
+    @Override
+    public UserDTO updateAvatar(Long userId, String avatarUrl) {
+        UserPO po = userMapper.selectById(userId);
+        if (po == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+        }
+        po.setAvatarUrl(avatarUrl);
+        po.setUpdatedAt(LocalDateTime.now());
+        userMapper.updateById(po);
+        return UserConverter.toDTO(po, linkedAccounts(userId));
     }
 
     private List<UserOAuthPO> linkedAccounts(Long userId) {

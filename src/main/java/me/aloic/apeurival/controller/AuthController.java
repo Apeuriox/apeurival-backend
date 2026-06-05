@@ -117,4 +117,13 @@ public class AuthController {
                 body.get("newPassword"));
         return ResponseEntity.ok(Map.of("changed", true));
     }
+
+    @PutMapping("/avatar")
+    public ResponseEntity<Map<String, Object>> updateAvatar(
+            @RequestBody Map<String, String> body,
+            Authentication auth) {
+        Long userId = Long.valueOf(auth.getPrincipal().toString());
+        UserDTO user = userService.updateAvatar(userId, body.get("avatarUrl"));
+        return ResponseEntity.ok(Map.of("avatarUrl", user.getAvatarUrl()));
+    }
 }

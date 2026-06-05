@@ -19,6 +19,7 @@ public class StaticResourceConfig implements WebMvcConfigurer {
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         String location = Paths.get(uploadPathConfig.resolve()).toAbsolutePath().toUri().toString();
         registry.addResourceHandler("/uploads/**")
-                .addResourceLocations(location);
+                .addResourceLocations(location)
+                .setCachePeriod(31536000); // 1 year — content-hash filenames never change
     }
 }

@@ -10,7 +10,7 @@
     </parent>
     <groupId>me.aloic</groupId>
     <artifactId>apeurival-backend</artifactId>
-    <version>0.1.0</version>
+    <version>0.1.1</version>
     <name>apeurival-backend</name>
     <description>apeurival-backend</description>
     <url/>
