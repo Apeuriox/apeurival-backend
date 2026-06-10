@@ -1,6 +1,7 @@
 package me.aloic.apeurival.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import lombok.extern.slf4j.Slf4j;
 import me.aloic.apeurival.converter.UserConverter;
 import me.aloic.apeurival.entity.dto.LoginRequest;
 import me.aloic.apeurival.entity.dto.RegisterRequest;
@@ -19,6 +20,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Slf4j
 @Service
 public class UserServiceImpl implements UserService {
 
@@ -52,6 +54,7 @@ public class UserServiceImpl implements UserService {
         UserPO existing = userMapper.selectOne(
                 new QueryWrapper<UserPO>().eq("username", req.getUsername()));
         if (existing != null) {
+            log.warn("User with this name already exists: {}", req.getUsername());
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already exists");
         }
 
@@ -64,6 +67,7 @@ public class UserServiceImpl implements UserService {
         po.setCreatedAt(LocalDateTime.now());
         po.setUpdatedAt(LocalDateTime.now());
         userMapper.insert(po);
+        log.info("registration ok for {}", req.getUsername());
 
         return UserConverter.toDTO(po, List.of());
     }

@@ -42,15 +42,19 @@ public class UploadController {
 
     @PostMapping("/image")
     public ResponseEntity<Map<String, String>> uploadImage(@RequestParam("file") MultipartFile file) {
+        log.info("[POST] handling uploadImage /api/upload");
         if (file.isEmpty()) {
+            log.warn("Target image upload was null");
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File is empty");
         }
         if (file.getSize() > maxSize) {
+            log.warn("Target image upload has maxed out size");
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "File too large, max " + maxSize / 1048576 + "MB");
         }
         String contentType = file.getContentType();
         if (contentType == null || !allowedTypes.contains(contentType)) {
+            log.warn("Target image upload cant be accepted, unsupported file type: {}",contentType);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Unsupported file type: " + contentType);
         }
@@ -64,13 +68,14 @@ public class UploadController {
 
             if (Files.notExists(target)) {
                 Files.write(target, bytes);
-                log.info("Saved: {}", filename);
+                log.info("Image upload saved: {}", filename);
             } else {
-                log.info("Dedup: {} already exists", filename);
+                log.info("Image upload dedup: {} already exists", filename);
             }
 
             return ResponseEntity.ok(Map.of("url", "/uploads/images/" + filename));
         } catch (IOException e) {
+            log.warn("IOException caught: {}",e.getMessage());
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to save file");
         }
     }

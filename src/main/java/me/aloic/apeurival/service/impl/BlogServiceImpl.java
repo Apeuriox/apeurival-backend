@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -46,6 +47,7 @@ public class BlogServiceImpl implements BlogService {
         dtoPage.setRecords(result.getRecords().stream()
                 .map(po -> PostConverter.toSummary(po, lang, userMapper.selectById(po.getAuthorId())))
                 .toList());
+        log.info("Final post size: {}",dtoPage.getTotal());
         return dtoPage;
     }
 
@@ -54,6 +56,7 @@ public class BlogServiceImpl implements BlogService {
         BlogPostPO post = blogPostMapper.selectOne(
                 new QueryWrapper<BlogPostPO>().eq("slug", slug));
         if (post == null) {
+            log.warn("Cant get target post, requested slug was {}",slug);
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found: " + slug);
         }
         return PostConverter.toDetail(post, lang,
@@ -64,14 +67,19 @@ public class BlogServiceImpl implements BlogService {
     @Override
     public PostDetailDTO createPost(PostRequest request, Long authorId) {
         if (request.getSlug() != null && !request.getSlug().isBlank()) {
+            log.info("Creating post with certain slug...target slug was {}", request.getSlug());
             BlogPostPO existing = blogPostMapper.selectOne(
                     new QueryWrapper<BlogPostPO>().eq("slug", request.getSlug()));
             if (existing != null) {
+                log.warn("Target slug exists, skipping...");
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Slug already exists: " + request.getSlug());
             }
         }
+        else {
+            request.setSlug(String.valueOf(UUID.randomUUID()));
+        }
         BlogPostPO po = new BlogPostPO();
-        applyRequest(po, request);
+        setupBlogPostPO(po, request);
         po.setAuthorId(authorId);
         po.setCreatedAt(LocalDateTime.now());
         po.setUpdatedAt(LocalDateTime.now());
@@ -79,7 +87,7 @@ public class BlogServiceImpl implements BlogService {
             po.setPublishedAt(LocalDateTime.now());
         }
         blogPostMapper.insert(po);
-        log.info("successfully create new post");
+        log.info("successfully create new post with slug of {}",request.getSlug());
         UserPO author = userMapper.selectById(authorId);
         return PostConverter.toDetail(po, "zh", null, null, author);
     }
@@ -88,10 +96,11 @@ public class BlogServiceImpl implements BlogService {
     public PostDetailDTO updatePost(Long id, PostRequest request, Long userId) {
         BlogPostPO po = blogPostMapper.selectById(id);
         if (po == null) {
+            log.warn("No such post {}", id);
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found: id=" + id);
         }
         checkOwnership(po, userId);
-        applyRequest(po, request);
+        setupBlogPostPO(po, request);
         po.setUpdatedAt(LocalDateTime.now());
         if (po.getStatus() != null && po.getStatus() == 1 && po.getPublishedAt() == null) {
             po.setPublishedAt(LocalDateTime.now());
@@ -106,6 +115,7 @@ public class BlogServiceImpl implements BlogService {
     public void deletePost(Long id, Long userId) {
         BlogPostPO po = blogPostMapper.selectById(id);
         if (po == null) {
+            log.warn("No such post to delete {}", id);
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found: id=" + id);
         }
         checkOwnership(po, userId);
@@ -138,7 +148,7 @@ public class BlogServiceImpl implements BlogService {
                         .last("LIMIT 1"));
     }
 
-    private void applyRequest(BlogPostPO po, PostRequest req) {
+    private void setupBlogPostPO(BlogPostPO po, PostRequest req) {
         po.setSlug(req.getSlug());
         po.setTitleZh(req.getTitleZh());
         po.setTitleEn(req.getTitleEn());

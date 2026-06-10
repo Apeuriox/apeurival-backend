@@ -2,6 +2,9 @@ package me.aloic.apeurival.security;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import me.aloic.apeurival.config.UploadDirInitializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -12,7 +15,7 @@ import java.util.Date;
 
 @Component
 public class JwtUtils {
-
+    private static final Logger log = LoggerFactory.getLogger(JwtUtils.class);
     private final SecretKey key;
     private final long expirationMs;
 
@@ -25,6 +28,7 @@ public class JwtUtils {
 
     public String generateToken(Long userId, String username, String role) {
         Date now = new Date();
+        log.info("Token issuing for {}, date: {}", username, now);
         return Jwts.builder()
                 .subject(String.valueOf(userId))
                 .claim("username", username)
@@ -36,11 +40,13 @@ public class JwtUtils {
     }
 
     public Claims parseToken(String token) {
-        return Jwts.parser()
+        Claims parsedToken = Jwts.parser()
                 .verifyWith(key)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
+        log.info("Token parsed for {}, date: {}", parsedToken.getId(), parsedToken.getIssuedAt());
+        return parsedToken;
     }
 
     public boolean validateToken(String token) {
