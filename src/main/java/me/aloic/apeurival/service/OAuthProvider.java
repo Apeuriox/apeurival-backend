@@ -1,4 +1,4 @@
-package me.aloic.apeurival.service.oauth;
+package me.aloic.apeurival.service;
 
 public interface OAuthProvider {
 

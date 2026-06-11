@@ -2,6 +2,7 @@ package me.aloic.apeurival.controller;
 
 import lombok.extern.slf4j.Slf4j;
 import me.aloic.apeurival.config.UploadPathConfig;
+import me.aloic.apeurival.util.CommonTool;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -61,8 +62,8 @@ public class UploadController {
 
         try {
             byte[] bytes = file.getBytes();
-            String hash = sha256(bytes);
-            String ext = extension(contentType);
+            String hash = CommonTool.encodeByteStreamToSHA256(bytes);
+            String ext = CommonTool.determineImageFileExtension(contentType);
             String filename = hash + ext;
             Path target = uploadDir.resolve(filename);
 
@@ -80,22 +81,7 @@ public class UploadController {
         }
     }
 
-    private static String sha256(byte[] bytes) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            return HexFormat.of().formatHex(md.digest(bytes));
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
-    }
 
-    private static String extension(String contentType) {
-        return switch (contentType) {
-            case "image/png" -> ".png";
-            case "image/jpeg" -> ".jpg";
-            case "image/webp" -> ".webp";
-            case "image/svg+xml" -> ".svg";
-            default -> "";
-        };
-    }
+
+
 }

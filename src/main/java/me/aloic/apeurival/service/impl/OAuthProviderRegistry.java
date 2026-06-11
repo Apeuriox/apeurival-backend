@@ -1,5 +1,6 @@
-package me.aloic.apeurival.service.oauth;
+package me.aloic.apeurival.service.impl;
 
+import me.aloic.apeurival.service.OAuthProvider;
 import org.springframework.stereotype.Component;
 
 import java.util.List;

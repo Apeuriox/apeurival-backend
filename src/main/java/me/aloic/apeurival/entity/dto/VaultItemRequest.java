@@ -7,4 +7,5 @@ public class VaultItemRequest {
     private String imageUrl;
     private String label;
     private String visibility;
+    private String authorName;
 }

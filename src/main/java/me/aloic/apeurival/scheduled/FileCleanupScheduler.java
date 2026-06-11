@@ -53,7 +53,8 @@ public class FileCleanupScheduler {
         this.imagesDir = Paths.get(uploadPathConfig.resolve(), "images").toAbsolutePath();
     }
 
-    @Scheduled(cron = "0 0 3 * * SUN")
+    //temp disabled
+//    @Scheduled(cron = "0 0 3 * * SUN")
     public void scheduledCleanup() {
         int removed = cleanOrphanFiles();
         if (removed > 0) {

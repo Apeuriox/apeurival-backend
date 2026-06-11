@@ -1,6 +1,7 @@
-package me.aloic.apeurival.service.oauth;
+package me.aloic.apeurival.service.impl;
 
 import lombok.extern.slf4j.Slf4j;
+import me.aloic.apeurival.service.OAuthProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -16,7 +17,8 @@ import java.util.Map;
 
 @Slf4j
 @Component
-public class OsuOAuthProvider implements OAuthProvider {
+public class OsuOAuthProvider implements OAuthProvider
+{
 
     private static final String PROVIDER_NAME = "osu";
     private static final String AUTHORIZE_URL = "https://osu.ppy.sh/oauth/authorize";

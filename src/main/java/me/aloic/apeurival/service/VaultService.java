@@ -1,16 +1,29 @@
 package me.aloic.apeurival.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import me.aloic.apeurival.entity.dto.VaultAuthorDTO;
 import me.aloic.apeurival.entity.dto.VaultItemDTO;
 import me.aloic.apeurival.entity.dto.VaultItemRequest;
 
+import java.util.List;
+
 public interface VaultService {
 
-    Page<VaultItemDTO> listVisibleItemsWithCurrentRole(Long ownerId, String userRole, Long currentUserId, int page, int size);
+    Page<VaultAuthorDTO> listAuthors(int page, int size);
 
-    VaultItemDTO create(VaultItemRequest request, Long ownerId);
+    Page<VaultItemDTO> listVisibleItemsWithCurrentRole(Long ownerId, String authorName,
+                                        String userRole, Long currentUserId,
+                                        int page, int size);
 
-    VaultItemDTO update(Long id, VaultItemRequest request, Long userId);
+    VaultItemDTO createSingleVaultItem(VaultItemRequest request, Long ownerId);
 
-    void delete(Long id, Long userId);
+    List<VaultItemDTO> batchCreate(List<VaultItemRequest> requests, Long ownerId);
+
+    VaultItemDTO updateVaultItem(Long id, VaultItemRequest request, Long userId);
+
+    void deleteVaultItem(Long id, Long userId);
+
+    int batchDelete(List<Long> ids, Long userId);
+
+    int batchSetVisibility(List<Long> ids, String visibility, Long userId);
 }
