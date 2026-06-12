@@ -8,4 +8,5 @@ public class VaultItemRequest {
     private String label;
     private String visibility;
     private String authorName;
+    private Long groupId;
 }

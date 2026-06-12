@@ -1,8 +1,15 @@
 package me.aloic.apeurival.converter;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import me.aloic.apeurival.entity.dto.VaultGroupDTO;
 import me.aloic.apeurival.entity.dto.VaultItemDTO;
 import me.aloic.apeurival.entity.po.UserPO;
+import me.aloic.apeurival.entity.po.VaultGroupMemberPO;
+import me.aloic.apeurival.entity.po.VaultGroupPO;
 import me.aloic.apeurival.entity.po.VaultItemPO;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class VaultConverter
 {
@@ -21,4 +28,5 @@ public class VaultConverter
         }
         return dto;
     }
+
 }

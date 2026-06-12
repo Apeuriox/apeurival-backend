@@ -10,18 +10,13 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("vault_items")
+@TableName("vault_groups")
 @AllArgsConstructor
 @NoArgsConstructor
-public class VaultItemPO {
-
+public class VaultGroupPO {
     @TableId(type = IdType.AUTO)
     private Long id;
-    private Long ownerId;
-    private String authorName;
-    private String imageUrl;
-    private String label;
-    private Long groupId;
-    private String visibility;  // PUBLIC | MEMBERS | RESTRICTED | PRIVATE
+    private String name;
+    private String description;
     private LocalDateTime createdAt;
 }

@@ -8,4 +8,5 @@ public class VaultAuthorDTO {
     private String authorName;
     private String avatarUrl;
     private int itemCount;
+    private boolean external;
 }

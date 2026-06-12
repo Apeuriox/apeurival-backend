@@ -44,7 +44,9 @@ public class VaultServiceImpl implements VaultService {
             VaultAuthorDTO dto = new VaultAuthorDTO();
             Object ownerIdObj = row.get("owner_id");
             String authorName = (String) row.get("author_name");
-            dto.setOwnerId(ownerIdObj != null ? ((Number) ownerIdObj).longValue() : null);
+            Long id = ownerIdObj != null ? ((Number) ownerIdObj).longValue() : null;
+            dto.setOwnerId(id);
+            dto.setExternal(authorName != null && !authorName.isBlank());
             dto.setItemCount(((Number) row.get("item_count")).intValue());
             if (authorName != null && !authorName.isBlank()) {
                 dto.setAuthorName(authorName);
@@ -66,20 +68,15 @@ public class VaultServiceImpl implements VaultService {
     public Page<VaultItemDTO> listVisibleItemsWithCurrentRole(Long ownerId, String authorName,
                                                                String userRole, Long currentUserId,
                                                                int page, int size) {
-        Page<VaultItemPO> poPage = new Page<>(page, size);
-        QueryWrapper<VaultItemPO> wrapper = new QueryWrapper<>();
-        if (ownerId != null) {
-            log.info("List vault items with owner id: {}", ownerId);
-            wrapper.eq("owner_id", ownerId);
-        }
-        if (authorName != null && !authorName.isBlank()) {
-            log.info("List vault items with author name: {}", authorName);
-            wrapper.eq("author_name", authorName);
-        }
-        applyVisibility(wrapper, userRole, currentUserId, ownerId);
-        wrapper.orderByDesc("created_at");
+        boolean isAdmin = "ADMIN".equals(userRole);
+        boolean isOwner = currentUserId != null && currentUserId.equals(ownerId);
+        boolean isEditor = "EDITOR".equals(userRole);
+        boolean isLoggedIn = currentUserId != null;
 
-        Page<VaultItemPO> result = vaultItemMapper.selectPage(poPage, wrapper);
+        Page<VaultItemPO> poPage = new Page<>(page, size);
+        Page<VaultItemPO> result = vaultItemMapper.listVisibleItemsPage(
+                poPage, ownerId, authorName, isAdmin, isOwner, isEditor, isLoggedIn);
+
         UserPO owner = ownerId != null ? userMapper.selectById(ownerId) : null;
         Page<VaultItemDTO> dtoPage = new Page<>(page, size, result.getTotal());
         dtoPage.setRecords(result.getRecords().stream()
@@ -90,8 +87,7 @@ public class VaultServiceImpl implements VaultService {
 
     @Override
     public VaultItemDTO createSingleVaultItem(VaultItemRequest req, Long ownerId) {
-        VaultItemPO po = insertOneVaultItem(req, ownerId);
-        log.info("Successfully created single vault item: {}",req.getLabel());
+        VaultItemPO po = insertOne(req, ownerId);
         return VaultConverter.setupVaultItemDTO(po, userMapper.selectById(ownerId));
     }
 
@@ -101,7 +97,7 @@ public class VaultServiceImpl implements VaultService {
         UserPO owner = userMapper.selectById(ownerId);
         List<VaultItemDTO> result = new ArrayList<>();
         for (VaultItemRequest req : requests) {
-            VaultItemPO po = insertOneVaultItem(req, ownerId);
+            VaultItemPO po = insertOne(req, ownerId);
             result.add(VaultConverter.setupVaultItemDTO(po, owner));
             log.info("created vault item in BATCH: {}",po.getLabel());
         }
@@ -169,12 +165,13 @@ public class VaultServiceImpl implements VaultService {
         return count;
     }
 
-    private VaultItemPO insertOneVaultItem(VaultItemRequest req, Long ownerId) {
+    private VaultItemPO insertOne(VaultItemRequest req, Long ownerId) {
         VaultItemPO po = new VaultItemPO();
         po.setOwnerId(ownerId);
         po.setAuthorName(req.getAuthorName());
         po.setImageUrl(req.getImageUrl());
         po.setLabel(req.getLabel());
+        po.setGroupId(req.getGroupId());
         po.setVisibility(req.getVisibility() != null ? req.getVisibility().toUpperCase() : "PUBLIC");
         po.setCreatedAt(LocalDateTime.now());
         vaultItemMapper.insert(po);
@@ -188,20 +185,4 @@ public class VaultServiceImpl implements VaultService {
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only manage your own vault items");
     }
 
-    private void applyVisibility(QueryWrapper<VaultItemPO> wrapper,
-                                  String userRole, Long currentUserId, Long ownerId) {
-        boolean isOwner = currentUserId != null && currentUserId.equals(ownerId);
-        boolean isAdmin = "ADMIN".equals(userRole);
-        boolean isEditor = "EDITOR".equals(userRole);
-        boolean isLoggedIn = currentUserId != null;
-
-        if (isOwner || isAdmin) return;
-        if (isEditor) {
-            wrapper.in("visibility", "PUBLIC", "MEMBERS", "RESTRICTED");
-        } else if (isLoggedIn) {
-            wrapper.in("visibility", "PUBLIC", "MEMBERS");
-        } else {
-            wrapper.eq("visibility", "PUBLIC");
-        }
-    }
 }

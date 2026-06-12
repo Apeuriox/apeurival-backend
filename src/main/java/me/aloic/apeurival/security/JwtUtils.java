@@ -47,7 +47,7 @@ public class JwtUtils {
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
-        log.info("Token parsed for {}, date: {}", parsedToken.getId(), parsedToken.getIssuedAt());
+        log.info("Token parsed for {}, Issued at: {}", parsedToken.getIssuer(), parsedToken.getIssuedAt());
         return parsedToken;
     }
 
