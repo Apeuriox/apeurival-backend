@@ -8,8 +8,10 @@ import me.aloic.apeurival.entity.dto.VaultAuthorDTO;
 import me.aloic.apeurival.entity.dto.VaultItemDTO;
 import me.aloic.apeurival.entity.dto.VaultItemRequest;
 import me.aloic.apeurival.entity.mapper.UserMapper;
+import me.aloic.apeurival.entity.mapper.VaultGroupMemberMapper;
 import me.aloic.apeurival.entity.mapper.VaultItemMapper;
 import me.aloic.apeurival.entity.po.UserPO;
+import me.aloic.apeurival.entity.po.VaultGroupMemberPO;
 import me.aloic.apeurival.entity.po.VaultItemPO;
 import me.aloic.apeurival.service.VaultService;
 import org.springframework.http.HttpStatus;
@@ -28,16 +30,23 @@ public class VaultServiceImpl implements VaultService {
 
     private final VaultItemMapper vaultItemMapper;
     private final UserMapper userMapper;
+    private final VaultGroupMemberMapper groupMemberMapper;
 
-    public VaultServiceImpl(VaultItemMapper vaultItemMapper, UserMapper userMapper) {
+    public VaultServiceImpl(VaultItemMapper vaultItemMapper,
+                            VaultGroupMemberMapper groupMemberMapper,
+                            UserMapper userMapper) {
         this.vaultItemMapper = vaultItemMapper;
+        this.groupMemberMapper = groupMemberMapper;
         this.userMapper = userMapper;
     }
 
     @Override
-    public Page<VaultAuthorDTO> listAuthors(int page, int size) {
+    public Page<VaultAuthorDTO> listAuthors(Long groupId, int page, int size, Long currentUserId, String userRole) {
+        if (groupId != null) {
+            checkGroupAccess(groupId, currentUserId, userRole);
+        }
         Page<Map<String, Object>> rawPage = new Page<>(page, size);
-        Page<Map<String, Object>> raw = vaultItemMapper.countByAuthorsPage(rawPage);
+        Page<Map<String, Object>> raw = vaultItemMapper.countByAuthorsPage(rawPage,groupId);
 
         List<VaultAuthorDTO> records = new ArrayList<>();
         for (Map<String, Object> row : raw.getRecords()) {
@@ -66,8 +75,12 @@ public class VaultServiceImpl implements VaultService {
 
     @Override
     public Page<VaultItemDTO> listVisibleItemsWithCurrentRole(Long ownerId, String authorName,
+                                                               Long groupId,
                                                                String userRole, Long currentUserId,
                                                                int page, int size) {
+        if (groupId != null) {
+            checkGroupAccess(groupId, currentUserId, userRole);
+        }
         boolean isAdmin = "ADMIN".equals(userRole);
         boolean isOwner = currentUserId != null && currentUserId.equals(ownerId);
         boolean isEditor = "EDITOR".equals(userRole);
@@ -75,7 +88,7 @@ public class VaultServiceImpl implements VaultService {
 
         Page<VaultItemPO> poPage = new Page<>(page, size);
         Page<VaultItemPO> result = vaultItemMapper.listVisibleItemsPage(
-                poPage, ownerId, authorName, isAdmin, isOwner, isEditor, isLoggedIn);
+                poPage, ownerId, authorName, groupId, isAdmin, isOwner, isEditor, isLoggedIn);
 
         UserPO owner = ownerId != null ? userMapper.selectById(ownerId) : null;
         Page<VaultItemDTO> dtoPage = new Page<>(page, size, result.getTotal());
@@ -183,6 +196,16 @@ public class VaultServiceImpl implements VaultService {
         UserPO caller = userMapper.selectById(userId);
         if (caller != null && "ADMIN".equals(caller.getRole())) return;
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only manage your own vault items");
+    }
+
+    private void checkGroupAccess(Long groupId, Long userId, String userRole) {
+        if ("ADMIN".equals(userRole)) return;
+        if (groupMemberMapper.exists(
+                new QueryWrapper<VaultGroupMemberPO>()
+                        .eq("group_id", groupId).eq("user_id", userId))) {
+            return;
+        }
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not a member of this group");
     }
 
 }

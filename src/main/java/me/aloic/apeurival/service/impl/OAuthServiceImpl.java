@@ -178,9 +178,9 @@ public class OAuthServiceImpl implements OAuthService {
     }
 
     private void updateTokens(UserOAuthPO po, OAuthTokenResponse resp) {
-        po.setAccessToken(resp.accessToken());
+        po.setAccessToken(tokenEncryptor.encrypt(resp.accessToken()));
         if (resp.refreshToken() != null) {
-            po.setRefreshToken(resp.refreshToken());
+            po.setRefreshToken(tokenEncryptor.encrypt(resp.refreshToken()));
         }
         if (resp.expiresIn() > 0) {
             po.setTokenExpiresAt(LocalDateTime.ofInstant(

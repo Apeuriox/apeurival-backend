@@ -2,29 +2,35 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="me.aloic.apeurival.entity.mapper.VaultItemMapper">
 
-    <resultMap id="authorCountMap" type="java.util.HashMap">
-        <result property="owner_id" column="owner_id"/>
-        <result property="author_name" column="author_name"/>
-        <result property="item_count" column="item_count"/>
-    </resultMap>
-
     <select id="countByAuthorsPage" resultType="java.util.HashMap">
         SELECT owner_id, author_name, COUNT(*) AS item_count
         FROM vault_items
+        <where>
+            <if test="groupId != null">
+                group_id = #{groupId}
+            </if>
+            <if test="groupId == null">
+                group_id IS NULL
+            </if>
+        </where>
         GROUP BY owner_id, author_name
     </select>
 
     <select id="listVisibleItemsPage" resultType="me.aloic.apeurival.entity.po.VaultItemPO">
         SELECT * FROM vault_items
-        WHERE
+        <where>
+            <if test="groupId != null">
+                AND group_id = #{groupId}
+            </if>
             <if test="ownerId != null">
-                owner_id = #{ownerId}
+                AND owner_id = #{ownerId}
                 AND (author_name IS NULL OR author_name = '')
             </if>
             <if test="authorName != null and authorName != ''">
-                author_name = #{authorName}
+                AND owner_id IS NULL
+                AND author_name = #{authorName}
             </if>
-            <if test="!isAdmin and !isOwner">
+            <if test="groupId == null and !isAdmin and !isOwner">
                 <choose>
                     <when test="isEditor">
                         AND visibility IN ('PUBLIC', 'MEMBERS', 'RESTRICTED')
@@ -37,6 +43,7 @@
                     </otherwise>
                 </choose>
             </if>
+        </where>
         ORDER BY created_at DESC
     </select>
 

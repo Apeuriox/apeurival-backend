@@ -9,9 +9,10 @@ import java.util.List;
 
 public interface VaultService {
 
-    Page<VaultAuthorDTO> listAuthors(int page, int size);
+    Page<VaultAuthorDTO> listAuthors(Long groupId, int page, int size, Long currentUserId, String userRole);
 
     Page<VaultItemDTO> listVisibleItemsWithCurrentRole(Long ownerId, String authorName,
+                                        Long groupId,
                                         String userRole, Long currentUserId,
                                         int page, int size);
 

@@ -94,7 +94,11 @@ public class VaultGroupServiceImpl implements VaultGroupService {
         VaultGroupMemberPO member = new VaultGroupMemberPO();
         member.setGroupId(groupId);
         member.setUserId(userId);
-        member.setRole(role != null ? role.toUpperCase() : "MEMBER");
+        String targetRole = "MEMBER";
+        if (role != null && callerRole!=null && callerRole.equalsIgnoreCase("ADMIN")) {
+            targetRole = role.equalsIgnoreCase("MANAGER") ? "MANAGER" : "MEMBER";
+        }
+        member.setRole(targetRole);
         memberMapper.insert(member);
         log.info("Added user {} to group {} as {}", userId, groupId, member.getRole());
     }

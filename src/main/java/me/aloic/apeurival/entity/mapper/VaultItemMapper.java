@@ -12,11 +12,12 @@ import java.util.Map;
 @Mapper
 public interface VaultItemMapper extends BaseMapper<VaultItemPO> {
 
-    Page<Map<String, Object>> countByAuthorsPage(Page<?> page);
+    Page<Map<String, Object>> countByAuthorsPage(Page<?> page, @Param("groupId") Long groupId);
 
     Page<VaultItemPO> listVisibleItemsPage(Page<VaultItemPO> page,
                                            @Param("ownerId") Long ownerId,
                                            @Param("authorName") String authorName,
+                                           @Param("groupId") Long groupId,
                                            @Param("isAdmin") boolean isAdmin,
                                            @Param("isOwner") boolean isOwner,
                                            @Param("isEditor") boolean isEditor,

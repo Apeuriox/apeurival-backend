@@ -26,23 +26,28 @@ public class VaultController {
 
     @GetMapping("/authors")
     public Page<VaultAuthorDTO> listAuthors(
+            @RequestParam(required = false) Long groupId,
             @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        log.info("[GET] handling listAuthors /api/vault/authors");
-        return vaultService.listAuthors(page, size);
+            @RequestParam(defaultValue = "20") int size,
+            Authentication auth) {
+        log.info("[GET] handling listAuthors /api/vault/authors groupId={}", groupId);
+        String role = CommonTool.extractRoleCutPrefix(auth);
+        Long currentUserId = auth != null ? Long.valueOf(auth.getPrincipal().toString()) : null;
+        return vaultService.listAuthors(groupId, page, size, currentUserId, role);
     }
 
     @GetMapping
     public Page<VaultItemDTO> listAllVisiblePage(
             @RequestParam(required = false) Long owner,
             @RequestParam(required = false) String authorName,
+            @RequestParam(required = false) Long groupId,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size,
             Authentication auth) {
-        log.info("[GET] handling list /api/vault owner={} authorName={}", owner, authorName);
+        log.info("[GET] handling list /api/vault owner={} authorName={} groupId={}", owner, authorName, groupId);
         String role = CommonTool.extractRoleCutPrefix(auth);
         Long currentUserId = auth != null ? Long.valueOf(auth.getPrincipal().toString()) : null;
-        return vaultService.listVisibleItemsWithCurrentRole(owner, authorName, role, currentUserId, page, size);
+        return vaultService.listVisibleItemsWithCurrentRole(owner, authorName, groupId, role, currentUserId, page, size);
     }
 
     @PostMapping
