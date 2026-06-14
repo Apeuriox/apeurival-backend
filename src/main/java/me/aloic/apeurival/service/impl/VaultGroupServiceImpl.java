@@ -53,9 +53,10 @@ public class VaultGroupServiceImpl implements VaultGroupService {
     }
 
     @Override
-    public List<VaultGroupDTO> listAllVaultGroup() {
+    public List<VaultGroupDTO> listAllVaultGroup(Long currentUserId, String userRole) {
+        boolean isAdmin = "ADMIN".equals(userRole);
         return groupMapper.selectList(new QueryWrapper<>()).stream()
-                .map(this::setupVaultGroup)
+                .map(po -> setupVaultGroup(po, currentUserId, isAdmin))
                 .toList();
     }
 
@@ -156,6 +157,19 @@ public class VaultGroupServiceImpl implements VaultGroupService {
             list.add(info);
         }
         dto.setMembers(list);
+        return dto;
+    }
+
+    private VaultGroupDTO setupVaultGroup(VaultGroupPO po, Long currentUserId, boolean isAdmin) {
+        VaultGroupDTO dto = setupVaultGroup(po);
+        if (!isAdmin) {
+            boolean inGroup = memberMapper.exists(
+                    new QueryWrapper<VaultGroupMemberPO>()
+                            .eq("group_id", po.getId()).eq("user_id", currentUserId));
+            if (!inGroup) {
+                dto.setMembers(List.of());
+            }
+        }
         return dto;
     }
 }

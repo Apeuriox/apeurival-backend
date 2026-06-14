@@ -83,12 +83,23 @@ public class VaultServiceImpl implements VaultService {
         }
         boolean isAdmin = "ADMIN".equals(userRole);
         boolean isOwner = currentUserId != null && currentUserId.equals(ownerId);
-        boolean isEditor = "EDITOR".equals(userRole);
-        boolean isLoggedIn = currentUserId != null;
-
         Page<VaultItemPO> poPage = new Page<>(page, size);
-        Page<VaultItemPO> result = vaultItemMapper.listVisibleItemsPage(
-                poPage, ownerId, authorName, groupId, isAdmin, isOwner, isEditor, isLoggedIn);
+        List<String> visibilities;
+        if (isAdmin || isOwner) {
+            visibilities = List.of("PUBLIC", "MEMBERS", "RESTRICTED", "PRIVATE");
+        } else if ("EDITOR".equals(userRole)) {
+            visibilities = List.of("PUBLIC", "MEMBERS", "RESTRICTED");
+        } else if (currentUserId != null) {
+            visibilities = List.of("PUBLIC", "MEMBERS");
+        } else {
+            visibilities = List.of("PUBLIC");
+        }
+        Page<VaultItemPO> result;
+        if (groupId != null) {
+            result = vaultItemMapper.selectGroupItemsPage(poPage, groupId, authorName, visibilities);
+        } else {
+            result = vaultItemMapper.selectNonGroupItemsPage(poPage, ownerId, authorName, visibilities);
+        }
 
         UserPO owner = ownerId != null ? userMapper.selectById(ownerId) : null;
         Page<VaultItemDTO> dtoPage = new Page<>(page, size, result.getTotal());

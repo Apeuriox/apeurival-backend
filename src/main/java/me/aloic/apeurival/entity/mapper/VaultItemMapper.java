@@ -14,12 +14,13 @@ public interface VaultItemMapper extends BaseMapper<VaultItemPO> {
 
     Page<Map<String, Object>> countByAuthorsPage(Page<?> page, @Param("groupId") Long groupId);
 
-    Page<VaultItemPO> listVisibleItemsPage(Page<VaultItemPO> page,
-                                           @Param("ownerId") Long ownerId,
-                                           @Param("authorName") String authorName,
+    Page<VaultItemPO> selectGroupItemsPage(Page<VaultItemPO> page,
                                            @Param("groupId") Long groupId,
-                                           @Param("isAdmin") boolean isAdmin,
-                                           @Param("isOwner") boolean isOwner,
-                                           @Param("isEditor") boolean isEditor,
-                                           @Param("isLoggedIn") boolean isLoggedIn);
+                                           @Param("authorName") String authorName,
+                                           @Param("visibilities") java.util.List<String> visibilities);
+
+    Page<VaultItemPO> selectNonGroupItemsPage(Page<VaultItemPO> page,
+                                              @Param("ownerId") Long ownerId,
+                                              @Param("authorName") String authorName,
+                                              @Param("visibilities") java.util.List<String> visibilities);
 }

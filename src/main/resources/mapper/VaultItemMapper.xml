@@ -16,34 +16,34 @@
         GROUP BY owner_id, author_name
     </select>
 
-    <select id="listVisibleItemsPage" resultType="me.aloic.apeurival.entity.po.VaultItemPO">
+    <select id="selectGroupItemsPage" resultType="me.aloic.apeurival.entity.po.VaultItemPO">
         SELECT * FROM vault_items
-        <where>
-            <if test="groupId != null">
-                AND group_id = #{groupId}
-            </if>
-            <if test="ownerId != null">
-                AND owner_id = #{ownerId}
-                AND (author_name IS NULL OR author_name = '')
-            </if>
-            <if test="authorName != null and authorName != ''">
-                AND owner_id IS NULL
-                AND author_name = #{authorName}
-            </if>
-            <if test="groupId == null and !isAdmin and !isOwner">
-                <choose>
-                    <when test="isEditor">
-                        AND visibility IN ('PUBLIC', 'MEMBERS', 'RESTRICTED')
-                    </when>
-                    <when test="isLoggedIn">
-                        AND visibility IN ('PUBLIC', 'MEMBERS')
-                    </when>
-                    <otherwise>
-                        AND visibility = 'PUBLIC'
-                    </otherwise>
-                </choose>
-            </if>
-        </where>
+        WHERE group_id = #{groupId}
+        <if test="authorName != null and authorName != ''">
+            AND author_name = #{authorName}
+        </if>
+        AND visibility IN
+        <foreach collection="visibilities" item="v" open="(" separator="," close=")">
+            #{v}
+        </foreach>
+        ORDER BY created_at DESC
+    </select>
+
+    <select id="selectNonGroupItemsPage" resultType="me.aloic.apeurival.entity.po.VaultItemPO">
+        SELECT * FROM vault_items
+        WHERE group_id IS NULL
+        <if test="ownerId != null">
+            AND owner_id = #{ownerId}
+            AND (author_name IS NULL OR author_name = '')
+        </if>
+        <if test="authorName != null and authorName != ''">
+            AND owner_id IS NULL
+            AND author_name = #{authorName}
+        </if>
+        AND visibility IN
+        <foreach collection="visibilities" item="v" open="(" separator="," close=")">
+            #{v}
+        </foreach>
         ORDER BY created_at DESC
     </select>
 

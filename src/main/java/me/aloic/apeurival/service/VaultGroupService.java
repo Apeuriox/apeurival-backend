@@ -9,7 +9,7 @@ public interface VaultGroupService {
 
     VaultGroupDTO createNewVaultGroup(VaultGroupRequest request, Long userId, String userRole);
 
-    List<VaultGroupDTO> listAllVaultGroup();
+    List<VaultGroupDTO> listAllVaultGroup(Long currentUserId, String userRole);
 
     VaultGroupDTO update(Long id, VaultGroupRequest request, Long userId, String userRole);
 

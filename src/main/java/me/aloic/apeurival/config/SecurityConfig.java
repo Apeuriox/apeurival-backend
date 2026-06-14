@@ -53,6 +53,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PUT, "/api/works/**").hasAnyRole("EDITOR", "ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/works/**").hasAnyRole("EDITOR", "ADMIN")
                 .requestMatchers("/api/upload/**").hasAnyRole("EDITOR", "ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/vault/groups").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/vault/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/vault/**").authenticated()
                 .requestMatchers(HttpMethod.PUT, "/api/vault/**").authenticated()

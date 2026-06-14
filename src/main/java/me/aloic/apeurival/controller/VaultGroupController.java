@@ -31,9 +31,11 @@ public class VaultGroupController {
     }
 
     @GetMapping
-    public List<VaultGroupDTO> list() {
+    public List<VaultGroupDTO> list(Authentication auth) {
         log.info("[GET] listing all groups");
-        return vaultGroupService.listAllVaultGroup();
+        Long userId = auth != null ? Long.valueOf(auth.getPrincipal().toString()) : null;
+        String role = CommonTool.extractRoleCutPrefix(auth);
+        return vaultGroupService.listAllVaultGroup(userId, role);
     }
 
     @PutMapping("/{id}")
