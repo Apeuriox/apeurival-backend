@@ -3,6 +3,8 @@ package me.aloic.apeurival.controller;
 import lombok.extern.slf4j.Slf4j;
 import me.aloic.apeurival.entity.dto.VaultGroupDTO;
 import me.aloic.apeurival.entity.dto.VaultGroupRequest;
+import me.aloic.apeurival.enums.RoleEnum;
+import me.aloic.apeurival.enums.RoleGroupEnum;
 import me.aloic.apeurival.service.VaultGroupService;
 import me.aloic.apeurival.util.CommonTool;
 import org.springframework.security.core.Authentication;
@@ -26,7 +28,7 @@ public class VaultGroupController {
     public VaultGroupDTO create(@RequestBody VaultGroupRequest request, Authentication auth) {
         log.info("[POST] creating group {}", request.getName());
         Long userId = Long.valueOf(auth.getPrincipal().toString());
-        String role = CommonTool.extractRoleCutPrefix(auth);
+        RoleEnum role = CommonTool.extractRole(auth);
         return vaultGroupService.createNewVaultGroup(request, userId, role);
     }
 
@@ -34,7 +36,7 @@ public class VaultGroupController {
     public List<VaultGroupDTO> list(Authentication auth) {
         log.info("[GET] listing all groups");
         Long userId = auth != null ? Long.valueOf(auth.getPrincipal().toString()) : null;
-        String role = CommonTool.extractRoleCutPrefix(auth);
+        RoleEnum role = CommonTool.extractRole(auth);
         return vaultGroupService.listAllVaultGroup(userId, role);
     }
 
@@ -43,7 +45,7 @@ public class VaultGroupController {
                                  Authentication auth) {
         log.info("[PUT] updating group of id:{}", id);
         Long userId = Long.valueOf(auth.getPrincipal().toString());
-        String role = CommonTool.extractRoleCutPrefix(auth);
+        RoleEnum role = CommonTool.extractRole(auth);
         return vaultGroupService.update(id, request, userId, role);
     }
 
@@ -51,7 +53,7 @@ public class VaultGroupController {
     public void delete(@PathVariable Long id, Authentication auth) {
         log.info("[DELETE] deleting group: {}", id);
         Long userId = Long.valueOf(auth.getPrincipal().toString());
-        String role = CommonTool.extractRoleCutPrefix(auth);
+        RoleEnum role = CommonTool.extractRole(auth);
         vaultGroupService.delete(id, userId, role);
     }
 
@@ -61,9 +63,9 @@ public class VaultGroupController {
                                           Authentication auth) {
         log.info("[POST] adding member to group: {}", id);
         Long targetUserId = Long.valueOf(body.get("userId").toString());
-        String memberRole = (String) body.getOrDefault("role", "MEMBER");
+        String memberRole = (String) body.getOrDefault("role", RoleGroupEnum.MEMBER.name());
         Long callerId = Long.valueOf(auth.getPrincipal().toString());
-        String callerRole = CommonTool.extractRoleCutPrefix(auth);
+        RoleEnum callerRole = CommonTool.extractRole(auth);
         vaultGroupService.addMember(id, targetUserId, memberRole, callerId, callerRole);
         return Map.of("added", true);
     }
@@ -74,7 +76,7 @@ public class VaultGroupController {
                                              Authentication auth) {
         log.info("[DELETE] deleting member from group: {}", id);
         Long callerId = Long.valueOf(auth.getPrincipal().toString());
-        String callerRole = CommonTool.extractRoleCutPrefix(auth);
+        RoleEnum callerRole = CommonTool.extractRole(auth);
         vaultGroupService.removeMember(id, userId, callerId, callerRole);
         return Map.of("removed", true);
     }

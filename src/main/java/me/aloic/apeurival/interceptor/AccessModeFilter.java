@@ -4,6 +4,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import me.aloic.apeurival.enums.RoleEnum;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -42,8 +43,8 @@ public class AccessModeFilter extends OncePerRequestFilter {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.isAuthenticated()) {
             for (GrantedAuthority ga : auth.getAuthorities()) {
-                String role = ga.getAuthority();
-                if ("ROLE_EDITOR".equals(role) || "ROLE_ADMIN".equals(role)) {
+                RoleEnum role = RoleEnum.fromAuthority(ga.getAuthority());
+                if (role != null && role.isAtLeastEditor()) {
                     filterChain.doFilter(request, response);
                     return;
                 }

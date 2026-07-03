@@ -10,6 +10,8 @@ import me.aloic.apeurival.entity.mapper.VaultGroupMemberMapper;
 import me.aloic.apeurival.entity.po.UserPO;
 import me.aloic.apeurival.entity.po.VaultGroupMemberPO;
 import me.aloic.apeurival.entity.po.VaultGroupPO;
+import me.aloic.apeurival.enums.RoleEnum;
+import me.aloic.apeurival.enums.RoleGroupEnum;
 import me.aloic.apeurival.service.VaultGroupService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -38,8 +40,8 @@ public class VaultGroupServiceImpl implements VaultGroupService {
     }
 
     @Override
-    public VaultGroupDTO createNewVaultGroup(VaultGroupRequest req, Long userId, String userRole) {
-        if (!"ADMIN".equals(userRole)) {
+    public VaultGroupDTO createNewVaultGroup(VaultGroupRequest req, Long userId, RoleEnum userRole) {
+        if (userRole == null || !userRole.canCreateGroup()) {
             log.warn("Permission denied for {} to create {} group",userId,req.getName());
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only ADMIN can create groups");
         }
@@ -53,15 +55,15 @@ public class VaultGroupServiceImpl implements VaultGroupService {
     }
 
     @Override
-    public List<VaultGroupDTO> listAllVaultGroup(Long currentUserId, String userRole) {
-        boolean isAdmin = "ADMIN".equals(userRole);
+    public List<VaultGroupDTO> listAllVaultGroup(Long currentUserId, RoleEnum userRole) {
+        boolean isAdmin = userRole != null && userRole.isAdmin();
         return groupMapper.selectList(new QueryWrapper<>()).stream()
                 .map(po -> setupVaultGroup(po, currentUserId, isAdmin))
                 .toList();
     }
 
     @Override
-    public VaultGroupDTO update(Long id, VaultGroupRequest req, Long userId, String userRole) {
+    public VaultGroupDTO update(Long id, VaultGroupRequest req, Long userId, RoleEnum userRole) {
         checkGroupManager(id, userId, userRole);
         VaultGroupPO po = groupMapper.selectById(id);
         if (po == null)
@@ -77,7 +79,7 @@ public class VaultGroupServiceImpl implements VaultGroupService {
     }
 
     @Override
-    public void delete(Long id, Long userId, String userRole) {
+    public void delete(Long id, Long userId, RoleEnum userRole) {
         checkGroupManager(id, userId, userRole);
         memberMapper.delete(new QueryWrapper<VaultGroupMemberPO>().eq("group_id", id));
         groupMapper.deleteById(id);
@@ -85,7 +87,7 @@ public class VaultGroupServiceImpl implements VaultGroupService {
     }
 
     @Override
-    public void addMember(Long groupId, Long userId, String role, Long callerId, String callerRole) {
+    public void addMember(Long groupId, Long userId, String role, Long callerId, RoleEnum callerRole) {
         checkGroupManager(groupId, callerId, callerRole);
         if (!groupMapper.exists(new QueryWrapper<VaultGroupPO>().eq("id", groupId)))
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found");
@@ -95,25 +97,29 @@ public class VaultGroupServiceImpl implements VaultGroupService {
         VaultGroupMemberPO member = new VaultGroupMemberPO();
         member.setGroupId(groupId);
         member.setUserId(userId);
-        String targetRole = "MEMBER";
-        if (role != null && callerRole!=null && callerRole.equalsIgnoreCase("ADMIN")) {
-            targetRole = role.equalsIgnoreCase("MANAGER") ? "MANAGER" : "MEMBER";
+        RoleGroupEnum targetRole = RoleGroupEnum.MEMBER;
+        if (role != null && callerRole != null && callerRole.isAdmin()) {
+            try {
+                targetRole = RoleGroupEnum.fromString(role);
+            } catch (IllegalArgumentException e) {
+                targetRole = RoleGroupEnum.MEMBER;
+            }
         }
-        member.setRole(targetRole);
+        member.setRole(targetRole.name());
         memberMapper.insert(member);
         log.info("Added user {} to group {} as {}", userId, groupId, member.getRole());
     }
 
     @Override
-    public void removeMember(Long groupId, Long userId, Long callerId, String callerRole) {
+    public void removeMember(Long groupId, Long userId, Long callerId, RoleEnum callerRole) {
         checkGroupManager(groupId, callerId, callerRole);
         memberMapper.delete(new QueryWrapper<VaultGroupMemberPO>()
                 .eq("group_id", groupId).eq("user_id", userId));
         log.info("Removed user {} from group {}", userId, groupId);
     }
 
-    private void checkGroupManager(Long groupId, Long userId, String userRole) {
-        if ("ADMIN".equals(userRole))
+    private void checkGroupManager(Long groupId, Long userId, RoleEnum userRole) {
+        if (userRole != null && userRole.isAdmin())
         {
             log.info("user role is ADMIN, userid: {}",userId);
             return;
@@ -121,7 +127,7 @@ public class VaultGroupServiceImpl implements VaultGroupService {
         VaultGroupMemberPO self = memberMapper.selectOne(
                 new QueryWrapper<VaultGroupMemberPO>()
                         .eq("group_id", groupId).eq("user_id", userId));
-        if (self != null && "MANAGER".equals(self.getRole()))
+        if (self != null && RoleGroupEnum.MANAGER == RoleGroupEnum.fromString(self.getRole()))
         {
             log.info("user role is MANAGER, userid: {}",userId);
             return;

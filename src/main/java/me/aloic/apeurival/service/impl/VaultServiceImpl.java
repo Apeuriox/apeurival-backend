@@ -13,6 +13,7 @@ import me.aloic.apeurival.entity.mapper.VaultItemMapper;
 import me.aloic.apeurival.entity.po.UserPO;
 import me.aloic.apeurival.entity.po.VaultGroupMemberPO;
 import me.aloic.apeurival.entity.po.VaultItemPO;
+import me.aloic.apeurival.enums.RoleEnum;
 import me.aloic.apeurival.service.VaultService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -41,7 +42,7 @@ public class VaultServiceImpl implements VaultService {
     }
 
     @Override
-    public Page<VaultAuthorDTO> listAuthors(Long groupId, int page, int size, Long currentUserId, String userRole) {
+    public Page<VaultAuthorDTO> listAuthors(Long groupId, int page, int size, Long currentUserId, RoleEnum userRole) {
         if (groupId != null) {
             checkGroupAccess(groupId, currentUserId, userRole);
         }
@@ -76,23 +77,18 @@ public class VaultServiceImpl implements VaultService {
     @Override
     public Page<VaultItemDTO> listVisibleItemsWithCurrentRole(Long ownerId, String authorName,
                                                                Long groupId,
-                                                               String userRole, Long currentUserId,
+                                                               RoleEnum userRole, Long currentUserId,
                                                                int page, int size) {
         if (groupId != null) {
             checkGroupAccess(groupId, currentUserId, userRole);
         }
-        boolean isAdmin = "ADMIN".equals(userRole);
         boolean isOwner = currentUserId != null && currentUserId.equals(ownerId);
         Page<VaultItemPO> poPage = new Page<>(page, size);
         List<String> visibilities;
-        if (isAdmin || isOwner) {
-            visibilities = List.of("PUBLIC", "MEMBERS", "RESTRICTED", "PRIVATE");
-        } else if ("EDITOR".equals(userRole)) {
-            visibilities = List.of("PUBLIC", "MEMBERS", "RESTRICTED");
-        } else if (currentUserId != null) {
-            visibilities = List.of("PUBLIC", "MEMBERS");
-        } else {
+        if (userRole == null) {
             visibilities = List.of("PUBLIC");
+        } else {
+            visibilities = userRole.visibleVisibilities(isOwner);
         }
         Page<VaultItemPO> result;
         if (groupId != null) {
@@ -110,7 +106,7 @@ public class VaultServiceImpl implements VaultService {
     }
 
     @Override
-    public VaultItemDTO createSingleVaultItem(VaultItemRequest req, Long ownerId, String userRole) {
+    public VaultItemDTO createSingleVaultItem(VaultItemRequest req, Long ownerId, RoleEnum userRole) {
         validateAuthorName(req.getAuthorName(), userRole);
         VaultItemPO po = insertOne(req, ownerId);
         return VaultConverter.setupVaultItemDTO(po, userMapper.selectById(ownerId));
@@ -118,7 +114,7 @@ public class VaultServiceImpl implements VaultService {
 
     @Override
     @Transactional
-    public List<VaultItemDTO> batchCreate(List<VaultItemRequest> requests, Long ownerId, String userRole) {
+    public List<VaultItemDTO> batchCreate(List<VaultItemRequest> requests, Long ownerId, RoleEnum userRole) {
         validateAuthorName(requests.getFirst().getAuthorName(), userRole);
         UserPO owner = userMapper.selectById(ownerId);
         List<VaultItemDTO> result = new ArrayList<>();
@@ -207,12 +203,12 @@ public class VaultServiceImpl implements VaultService {
     private void checkOwnership(VaultItemPO po, Long userId) {
         if (po.getOwnerId() != null && po.getOwnerId().equals(userId)) return;
         UserPO caller = userMapper.selectById(userId);
-        if (caller != null && "ADMIN".equals(caller.getRole())) return;
+        if (caller != null && RoleEnum.ADMIN == RoleEnum.fromString(caller.getRole())) return;
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only manage your own vault items");
     }
 
-    private void checkGroupAccess(Long groupId, Long userId, String userRole) {
-        if ("ADMIN".equals(userRole)) return;
+    private void checkGroupAccess(Long groupId, Long userId, RoleEnum userRole) {
+        if (userRole != null && userRole.isAdmin()) return;
         if (groupMemberMapper.exists(
                 new QueryWrapper<VaultGroupMemberPO>()
                         .eq("group_id", groupId).eq("user_id", userId))) {
@@ -221,9 +217,9 @@ public class VaultServiceImpl implements VaultService {
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not a member of this group");
     }
 
-    private void validateAuthorName(String authorName, String userRole) {
+    private void validateAuthorName(String authorName, RoleEnum userRole) {
         if (authorName != null && !authorName.isBlank()
-                && !"ADMIN".equals(userRole) && !"EDITOR".equals(userRole)) {
+                && (userRole == null || !userRole.canAssignExternalAuthor())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only EDITOR/ADMIN can assign external author");
         }
     }

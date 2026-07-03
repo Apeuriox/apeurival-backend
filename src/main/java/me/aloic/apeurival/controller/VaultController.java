@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import me.aloic.apeurival.entity.dto.VaultAuthorDTO;
 import me.aloic.apeurival.entity.dto.VaultItemDTO;
 import me.aloic.apeurival.entity.dto.VaultItemRequest;
+import me.aloic.apeurival.enums.RoleEnum;
 import me.aloic.apeurival.service.VaultService;
 import me.aloic.apeurival.util.CommonTool;
 import org.springframework.security.core.Authentication;
@@ -31,7 +32,7 @@ public class VaultController {
             @RequestParam(defaultValue = "20") int size,
             Authentication auth) {
         log.info("[GET] handling listAuthors /api/vault/authors groupId={}", groupId);
-        String role = CommonTool.extractRoleCutPrefix(auth);
+        RoleEnum role = CommonTool.extractRole(auth);
         Long currentUserId = auth != null ? Long.valueOf(auth.getPrincipal().toString()) : null;
         return vaultService.listAuthors(groupId, page, size, currentUserId, role);
     }
@@ -45,7 +46,7 @@ public class VaultController {
             @RequestParam(defaultValue = "20") int size,
             Authentication auth) {
         log.info("[GET] handling list /api/vault owner={} authorName={} groupId={}", owner, authorName, groupId);
-        String role = CommonTool.extractRoleCutPrefix(auth);
+        RoleEnum role = CommonTool.extractRole(auth);
         if (owner!=null && authorName!=null) {
             owner=null;
         }
@@ -57,7 +58,7 @@ public class VaultController {
     public VaultItemDTO create(@RequestBody VaultItemRequest request, Authentication auth) {
         log.info("[POST] handling create /api/vault");
         Long userId = Long.valueOf(auth.getPrincipal().toString());
-        String role = CommonTool.extractRoleCutPrefix(auth);
+        RoleEnum role = CommonTool.extractRole(auth);
         return vaultService.createSingleVaultItem(request, userId, role);
     }
 
@@ -65,7 +66,7 @@ public class VaultController {
     public List<VaultItemDTO> batchCreate(@RequestBody List<VaultItemRequest> requests, Authentication auth) {
         log.info("[POST] handling batchCreate /api/vault/batch size={}", requests.size());
         Long userId = Long.valueOf(auth.getPrincipal().toString());
-        String role = CommonTool.extractRoleCutPrefix(auth);
+        RoleEnum role = CommonTool.extractRole(auth);
         return vaultService.batchCreate(requests, userId, role);
     }
 
