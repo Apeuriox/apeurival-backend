@@ -8,7 +8,8 @@ import me.aloic.apeurival.enums.PostCategoryEnum;
 
 public interface BlogService {
 
-    Page<PostSummaryDTO> listPublishedPosts(String tag, PostCategoryEnum category, int page, int size, String lang);
+    Page<PostSummaryDTO> listPublishedPosts(String tag, PostCategoryEnum category, Long authorId,
+                                            String sort, int page, int size, String lang);
 
     PostDetailDTO getPostBySlug(String slug, String lang);
 

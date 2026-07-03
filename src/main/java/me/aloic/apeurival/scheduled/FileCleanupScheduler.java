@@ -4,12 +4,18 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import lombok.extern.slf4j.Slf4j;
 import me.aloic.apeurival.config.UploadPathConfig;
 import me.aloic.apeurival.entity.mapper.BlogPostMapper;
+import me.aloic.apeurival.entity.mapper.OperationLogMapper;
+import me.aloic.apeurival.entity.mapper.UploadMetaMapper;
 import me.aloic.apeurival.entity.mapper.UserMapper;
+import me.aloic.apeurival.entity.mapper.VaultItemMapper;
 import me.aloic.apeurival.entity.mapper.WorkImageMapper;
 import me.aloic.apeurival.entity.mapper.WorkMapper;
 import me.aloic.apeurival.entity.mapper.WorkMomentMapper;
 import me.aloic.apeurival.entity.po.BlogPostPO;
+import me.aloic.apeurival.entity.po.OperationLogPO;
+import me.aloic.apeurival.entity.po.UploadMetaPO;
 import me.aloic.apeurival.entity.po.UserPO;
+import me.aloic.apeurival.entity.po.VaultItemPO;
 import me.aloic.apeurival.entity.po.WorkImagePO;
 import me.aloic.apeurival.entity.po.WorkMomentPO;
 import me.aloic.apeurival.entity.po.WorkPO;
@@ -20,6 +26,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -31,107 +38,138 @@ import java.util.regex.Pattern;
 public class FileCleanupScheduler {
 
     private static final Pattern MD_IMAGE = Pattern.compile("!\\[.*?]\\(/uploads/(?:images/)?([^)]+)\\)");
+    private static final int UNBOUND_TTL_HOURS = 24;
 
     private final Path imagesDir;
+    private final UploadMetaMapper uploadMetaMapper;
     private final WorkMapper workMapper;
     private final WorkImageMapper workImageMapper;
     private final WorkMomentMapper workMomentMapper;
     private final BlogPostMapper blogPostMapper;
+    private final VaultItemMapper vaultItemMapper;
+    private final OperationLogMapper operationLogMapper;
     private final UserMapper userMapper;
 
     public FileCleanupScheduler(UploadPathConfig uploadPathConfig,
+                                UploadMetaMapper uploadMetaMapper,
                                 WorkMapper workMapper,
                                 WorkImageMapper workImageMapper,
                                 WorkMomentMapper workMomentMapper,
                                 BlogPostMapper blogPostMapper,
+                                VaultItemMapper vaultItemMapper,
+                                OperationLogMapper operationLogMapper,
                                 UserMapper userMapper) {
+        this.uploadMetaMapper = uploadMetaMapper;
         this.workMapper = workMapper;
         this.workImageMapper = workImageMapper;
         this.workMomentMapper = workMomentMapper;
         this.blogPostMapper = blogPostMapper;
+        this.vaultItemMapper = vaultItemMapper;
+        this.operationLogMapper = operationLogMapper;
         this.userMapper = userMapper;
         this.imagesDir = Paths.get(uploadPathConfig.resolve(), "images").toAbsolutePath();
     }
 
-    //temp disabled
-//    @Scheduled(cron = "0 0 3 * * SUN")
+    @Scheduled(cron = "0 0 * * * *")
     public void scheduledCleanup() {
-        int removed = cleanOrphanFiles();
-        if (removed > 0) {
-            log.info("Weekly orphan cleanup: {} files removed", removed);
-        }
+        log.info("Hourly upload cleanup started");
+        int bound = bindReferencedFiles();
+        int removed = cleanExpiredUnboundFiles();
+        log.info("Hourly cleanup done: {} files bound, {} expired files removed", bound, removed);
     }
 
-    public List<String> listOrphanFiles() {
-        if (Files.notExists(imagesDir)) return List.of();
+    public int bindReferencedFiles() {
         Set<String> referenced = collectAllReferencedFilenames();
-        try (var files = Files.list(imagesDir)) {
-            return files
-                    .filter(Files::isRegularFile)
-                    .filter(f -> !referenced.contains(f.getFileName().toString()))
-                    .map(p -> p.getFileName().toString())
-                    .toList();
-        } catch (IOException e) {
-            log.error("Orphan scan failed", e);
-            return List.of();
-        }
-    }
-
-    public int cleanOrphanFiles() {
-        if (Files.notExists(imagesDir)) return 0;
-        Set<String> referenced = collectAllReferencedFilenames();
-        int removed = 0;
-        try (var files = Files.list(imagesDir)) {
-            List<Path> orphans = files
-                    .filter(Files::isRegularFile)
-                    .filter(f -> !referenced.contains(f.getFileName().toString()))
-                    .toList();
-            for (Path orphan : orphans) {
-                Files.delete(orphan);
-                log.info("Cleaned orphan: {}", orphan.getFileName());
-                removed++;
+        if (referenced.isEmpty()) return 0;
+        List<UploadMetaPO> unbound = uploadMetaMapper.selectList(
+                new QueryWrapper<UploadMetaPO>().eq("bound", false));
+        int count = 0;
+        for (UploadMetaPO meta : unbound) {
+            if (referenced.contains(meta.getFilename())) {
+                meta.setBound(true);
+                uploadMetaMapper.updateById(meta);
+                count++;
             }
-        } catch (IOException e) {
-            log.error("Orphan scan failed", e);
+        }
+        if (count > 0) {
+            log.info("Bound {} uploaded files", count);
+        }
+        return count;
+    }
+
+    public int cleanExpiredUnboundFiles() {
+        if (Files.notExists(imagesDir)) return 0;
+        LocalDateTime cutoff = LocalDateTime.now().minusHours(UNBOUND_TTL_HOURS);
+        List<UploadMetaPO> expired = uploadMetaMapper.selectList(
+                new QueryWrapper<UploadMetaPO>()
+                        .eq("bound", false)
+                        .le("created_at", cutoff));
+        int removed = 0;
+        for (UploadMetaPO meta : expired) {
+            Path file = imagesDir.resolve(meta.getFilename());
+            try {
+                if (Files.exists(file)) {
+                    Files.delete(file);
+                }
+                uploadMetaMapper.deleteById(meta.getId());
+                log.info("Cleaned expired unbound file: {}", meta.getFilename());
+                removed++;
+            } catch (IOException e) {
+                log.error("Failed to delete file {}", meta.getFilename(), e);
+            }
         }
         return removed;
+    }
+
+    public List<UploadMetaPO> listUnboundFiles() {
+        return uploadMetaMapper.selectList(
+                new QueryWrapper<UploadMetaPO>()
+                        .eq("bound", false)
+                        .orderByAsc("created_at"));
     }
 
     private Set<String> collectAllReferencedFilenames() {
         Set<String> refs = new HashSet<>();
 
-        // works.cover_url
         List<WorkPO> works = workMapper.selectList(
-                new QueryWrapper<WorkPO>().select("cover_url").isNotNull("cover_url"));
-        for (WorkPO w : works) extractFilename(w.getCoverUrl(), refs);
+                new QueryWrapper<WorkPO>().select("cover_url", "content_md")
+                        .and(w -> w.isNotNull("cover_url").or().isNotNull("content_md")));
+        for (WorkPO w : works) {
+            extractFilename(w.getCoverUrl(), refs);
+            extractMarkdownImages(w.getContentMd(), refs);
+        }
 
-        // work_images.image_url
         List<WorkImagePO> images = workImageMapper.selectList(
                 new QueryWrapper<WorkImagePO>().select("image_url").isNotNull("image_url"));
         for (WorkImagePO wi : images) extractFilename(wi.getImageUrl(), refs);
 
-        // work_moments.image_url
         List<WorkMomentPO> moments = workMomentMapper.selectList(
                 new QueryWrapper<WorkMomentPO>().select("image_url").isNotNull("image_url"));
         for (WorkMomentPO m : moments) extractFilename(m.getImageUrl(), refs);
 
-        // posts.cover_url
         List<BlogPostPO> posts = blogPostMapper.selectList(
-                new QueryWrapper<BlogPostPO>().select("cover_url").isNotNull("cover_url"));
-        for (BlogPostPO p : posts) extractFilename(p.getCoverUrl(), refs);
-
-        // posts.content_md — extract markdown images
-        List<BlogPostPO> postContents = blogPostMapper.selectList(
-                new QueryWrapper<BlogPostPO>().select("content_md").isNotNull("content_md"));
-        for (BlogPostPO p : postContents) {
-            Matcher m = MD_IMAGE.matcher(p.getContentMd());
-            while (m.find()) refs.add(m.group(1));
+                new QueryWrapper<BlogPostPO>().select("cover_url", "content_md")
+                        .and(w -> w.isNotNull("cover_url").or().isNotNull("content_md")));
+        for (BlogPostPO p : posts) {
+            extractFilename(p.getCoverUrl(), refs);
+            extractMarkdownImages(p.getContentMd(), refs);
         }
 
-        // users.avatar_url
+        List<VaultItemPO> vaultItems = vaultItemMapper.selectList(
+                new QueryWrapper<VaultItemPO>().select("image_url").isNotNull("image_url"));
+        for (VaultItemPO v : vaultItems) extractFilename(v.getImageUrl(), refs);
+
         List<UserPO> users = userMapper.selectList(
                 new QueryWrapper<UserPO>().select("avatar_url").isNotNull("avatar_url"));
         for (UserPO u : users) extractFilename(u.getAvatarUrl(), refs);
+
+        List<OperationLogPO> logs = operationLogMapper.selectList(
+                new QueryWrapper<OperationLogPO>().select("entity_snapshot", "previous_snapshot")
+                        .and(w -> w.isNotNull("entity_snapshot").or().isNotNull("previous_snapshot")));
+        for (OperationLogPO l : logs) {
+            extractJsonImageFields(l.getEntitySnapshot(), refs);
+            extractJsonImageFields(l.getPreviousSnapshot(), refs);
+        }
 
         return refs;
     }
@@ -140,5 +178,41 @@ public class FileCleanupScheduler {
         if (url == null || url.isBlank()) return;
         String name = url.substring(url.lastIndexOf('/') + 1);
         if (!name.isBlank()) out.add(name);
+    }
+
+    private void extractMarkdownImages(String contentMd, Set<String> out) {
+        if (contentMd == null || contentMd.isBlank()) return;
+        Matcher m = MD_IMAGE.matcher(contentMd);
+        while (m.find()) out.add(m.group(1));
+    }
+
+    private void extractJsonImageFields(String json, Set<String> out) {
+        if (json == null || json.isBlank()) return;
+        extractFromJsonField(json, "coverUrl", out);
+        extractFromJsonField(json, "imageUrl", out);
+        extractFromJsonField(json, "avatarUrl", out);
+        extractJsonMdField(json, "contentMd", out);
+    }
+
+    private void extractFromJsonField(String json, String field, Set<String> out) {
+        java.util.regex.Matcher m = Pattern.compile("\"" + field + "\"\\s*:\\s*\"([^\"]*)\"")
+                .matcher(json);
+        while (m.find()) {
+            String val = m.group(1);
+            if (!val.isBlank()) extractFilename(val, out);
+        }
+    }
+
+    private void extractJsonMdField(String json, String field, Set<String> out) {
+        int start = json.indexOf("\"" + field + "\"");
+        if (start < 0) return;
+        int colon = json.indexOf(':', start);
+        if (colon < 0) return;
+        int quote = json.indexOf('"', colon);
+        if (quote < 0) return;
+        int endQuote = json.indexOf('"', quote + 1);
+        if (endQuote < 0) return;
+        String contentMd = json.substring(quote + 1, endQuote);
+        extractMarkdownImages(contentMd, out);
     }
 }

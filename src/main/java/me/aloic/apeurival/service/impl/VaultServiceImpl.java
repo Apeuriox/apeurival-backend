@@ -2,6 +2,7 @@ package me.aloic.apeurival.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import me.aloic.apeurival.converter.VaultConverter;
 import me.aloic.apeurival.entity.dto.VaultAuthorDTO;
@@ -13,7 +14,9 @@ import me.aloic.apeurival.entity.mapper.VaultItemMapper;
 import me.aloic.apeurival.entity.po.UserPO;
 import me.aloic.apeurival.entity.po.VaultGroupMemberPO;
 import me.aloic.apeurival.entity.po.VaultItemPO;
+import me.aloic.apeurival.enums.EntityTypeEnum;
 import me.aloic.apeurival.enums.RoleEnum;
+import me.aloic.apeurival.service.OperationLogService;
 import me.aloic.apeurival.service.VaultService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -32,13 +35,19 @@ public class VaultServiceImpl implements VaultService {
     private final VaultItemMapper vaultItemMapper;
     private final UserMapper userMapper;
     private final VaultGroupMemberMapper groupMemberMapper;
+    private final OperationLogService operationLogService;
+    private final ObjectMapper objectMapper;
 
     public VaultServiceImpl(VaultItemMapper vaultItemMapper,
                             VaultGroupMemberMapper groupMemberMapper,
-                            UserMapper userMapper) {
+                            UserMapper userMapper,
+                            OperationLogService operationLogService,
+                            ObjectMapper objectMapper) {
         this.vaultItemMapper = vaultItemMapper;
         this.groupMemberMapper = groupMemberMapper;
         this.userMapper = userMapper;
+        this.operationLogService = operationLogService;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -109,6 +118,7 @@ public class VaultServiceImpl implements VaultService {
     public VaultItemDTO createSingleVaultItem(VaultItemRequest req, Long ownerId, RoleEnum userRole) {
         validateAuthorName(req.getAuthorName(), userRole);
         VaultItemPO po = insertOne(req, ownerId);
+        operationLogService.logCreate(EntityTypeEnum.VAULT_ITEM.getCode(), po.getId(), ownerId, po);
         return VaultConverter.setupVaultItemDTO(po, userMapper.selectById(ownerId));
     }
 
@@ -121,6 +131,7 @@ public class VaultServiceImpl implements VaultService {
         for (VaultItemRequest req : requests) {
             VaultItemPO po = insertOne(req, ownerId);
             result.add(VaultConverter.setupVaultItemDTO(po, owner));
+            operationLogService.logCreate(EntityTypeEnum.VAULT_ITEM.getCode(), po.getId(), ownerId, po);
             log.info("created vault item in BATCH: {}",po.getLabel());
         }
         log.info("Successfully created {} vault items.",result.size());
@@ -135,11 +146,13 @@ public class VaultServiceImpl implements VaultService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Vault item not found");
         }
         checkOwnership(po, userId);
+        VaultItemPO oldPo = clonePo(po);
         if (req.getImageUrl() != null) po.setImageUrl(req.getImageUrl());
         if (req.getLabel() != null) po.setLabel(req.getLabel());
         if (req.getVisibility() != null) po.setVisibility(req.getVisibility().toUpperCase());
         vaultItemMapper.updateById(po);
         log.info("Successfully updated vault item: {}", id);
+        operationLogService.logUpdate(EntityTypeEnum.VAULT_ITEM.getCode(), id, userId, po, oldPo);
         return VaultConverter.setupVaultItemDTO(po, userMapper.selectById(po.getOwnerId()));
     }
 
@@ -152,6 +165,7 @@ public class VaultServiceImpl implements VaultService {
         }
         checkOwnership(po, userId);
         vaultItemMapper.deleteById(id);
+        operationLogService.logDelete(EntityTypeEnum.VAULT_ITEM.getCode(), id, userId, po);
         log.info("Successfully deleted vault item: {}", id);
     }
 
@@ -164,6 +178,7 @@ public class VaultServiceImpl implements VaultService {
             if (po == null) continue;
             checkOwnership(po, userId);
             vaultItemMapper.deleteById(id);
+            operationLogService.logDelete(EntityTypeEnum.VAULT_ITEM.getCode(), id, userId, po);
             count++;
             log.info("deleting vault item in BATCH: {}",po.getLabel());
         }
@@ -224,4 +239,11 @@ public class VaultServiceImpl implements VaultService {
         }
     }
 
+    private VaultItemPO clonePo(VaultItemPO po) {
+        try {
+            return objectMapper.readValue(objectMapper.writeValueAsString(po), VaultItemPO.class);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to clone entity", e);
+        }
+    }
 }

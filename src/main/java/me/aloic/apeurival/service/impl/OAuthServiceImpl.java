@@ -88,7 +88,7 @@ public class OAuthServiceImpl implements OAuthService {
             user.setDisplayName(userInfo.providerUsername());
             user.setAvatarUrl(userInfo.avatarUrl());
             user.setPasswordHash("");
-            user.setRole(RoleEnum.USER.name());
+            user.setRole(RoleEnum.OSU.name());
             user.setCreatedAt(LocalDateTime.now());
             user.setUpdatedAt(LocalDateTime.now());
             userMapper.insert(user);
@@ -139,6 +139,12 @@ public class OAuthServiceImpl implements OAuthService {
         userOAuthMapper.insert(binding);
 
         UserPO user = userMapper.selectById(userId);
+        RoleEnum currentRole = RoleEnum.fromString(user.getRole());
+        if (currentRole == RoleEnum.USER) {
+            user.setRole(RoleEnum.OSU.name());
+            userMapper.updateById(user);
+            log.info("Upgraded user {} role from USER to OSU via OAuth link", userId);
+        }
         List<UserOAuthPO> links = userOAuthMapper.selectList(
                 new QueryWrapper<UserOAuthPO>().eq("user_id", userId));
         return UserConverter.toDTO(user, links);
@@ -168,6 +174,11 @@ public class OAuthServiceImpl implements OAuthService {
     }
 
     private void fillTokens(UserOAuthPO po, OAuthTokenResponse resp) {
+        setupJWTToken(po, resp);
+    }
+
+    private void setupJWTToken(UserOAuthPO po, OAuthTokenResponse resp)
+    {
         po.setAccessToken(tokenEncryptor.encrypt(resp.accessToken()));
         if (resp.refreshToken() != null) {
             po.setRefreshToken(tokenEncryptor.encrypt(resp.refreshToken()));
@@ -179,14 +190,7 @@ public class OAuthServiceImpl implements OAuthService {
     }
 
     private void updateTokens(UserOAuthPO po, OAuthTokenResponse resp) {
-        po.setAccessToken(tokenEncryptor.encrypt(resp.accessToken()));
-        if (resp.refreshToken() != null) {
-            po.setRefreshToken(tokenEncryptor.encrypt(resp.refreshToken()));
-        }
-        if (resp.expiresIn() > 0) {
-            po.setTokenExpiresAt(LocalDateTime.ofInstant(
-                    Instant.now().plusSeconds(resp.expiresIn()), ZoneId.systemDefault()));
-        }
+        setupJWTToken(po, resp);
         userOAuthMapper.updateById(po);
     }
 }

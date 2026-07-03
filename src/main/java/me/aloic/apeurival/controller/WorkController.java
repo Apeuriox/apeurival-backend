@@ -23,10 +23,12 @@ public class WorkController {
     @GetMapping
     public Page<WorkSummaryDTO> listWorks(
             @RequestParam(required = false) String type,
+            @RequestParam(required = false) Long authorId,
+            @RequestParam(required = false) String sort,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size) {
         log.info("[GET] handling getListWorks /api/works");
-        return workService.listPublishedWorks(type, page, size);
+        return workService.listPublishedWorks(type, authorId, sort, page, size);
     }
 
     @GetMapping("/{id}")
@@ -51,8 +53,9 @@ public class WorkController {
     }
 
     @DeleteMapping("/{id}")
-    public void deleteWork(@PathVariable Long id) {
+    public void deleteWork(@PathVariable Long id, Authentication auth) {
         log.info("[DELETE] handling deleteWork /api/works/{}",id);
-        workService.deleteWork(id);
+        Long userId = Long.valueOf(auth.getPrincipal().toString());
+        workService.deleteWork(id, userId);
     }
 }

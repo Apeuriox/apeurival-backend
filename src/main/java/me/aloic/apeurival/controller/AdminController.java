@@ -1,41 +1,54 @@
 package me.aloic.apeurival.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.extern.slf4j.Slf4j;
-import me.aloic.apeurival.scheduled.FileCleanupScheduler;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import me.aloic.apeurival.entity.po.OperationLogPO;
+import me.aloic.apeurival.entity.po.UploadMetaPO;
+import me.aloic.apeurival.service.AdminService;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/admin")
+@RequestMapping("/api/admin/operations")
 public class AdminController {
 
-    private final FileCleanupScheduler cleanupScheduler;
+    private final AdminService adminService;
 
-    public AdminController(FileCleanupScheduler cleanupScheduler) {
-        this.cleanupScheduler = cleanupScheduler;
+    public AdminController(AdminService adminService) {
+        this.adminService = adminService;
     }
 
-    @GetMapping("/orphan-files")
-    public ResponseEntity<Map<String, Object>> previewOrphans() {
-        List<String> orphans = cleanupScheduler.listOrphanFiles();
-        log.info("Orphan preview: {} files found", orphans.size());
-        return ResponseEntity.ok(Map.of(
-                "count", orphans.size(),
-                "files", orphans
-        ));
+    @GetMapping
+    public Page<OperationLogPO> listLogs(
+            @RequestParam(required = false) String entityType,
+            @RequestParam(required = false) Long entityId,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        log.info("[GET] listing operation logs entityType={} entityId={}", entityType, entityId);
+        return adminService.listOperationLogs(entityType, entityId, page, size);
     }
 
-    @PostMapping("/cleanup-files")
-    public ResponseEntity<Map<String, Object>> cleanupFiles() {
-        int removed = cleanupScheduler.cleanOrphanFiles();
-        log.info("Manual cleanup: {} files removed", removed);
-        return ResponseEntity.ok(Map.of("removed", removed));
+    @PostMapping("/{logId}/revert")
+    public Map<String, Object> revertLog(@PathVariable Long logId, Authentication auth) {
+        log.info("[POST] reverting operation log id={}", logId);
+        Long operatorId = Long.valueOf(auth.getPrincipal().toString());
+        return adminService.revertOperation(logId, operatorId);
+    }
+
+    @GetMapping("/uploads/unbound")
+    public List<UploadMetaPO> listUnboundUploads() {
+        log.info("[GET] listing unbound uploads");
+        return adminService.listUnboundUploads();
+    }
+
+    @DeleteMapping("/uploads/clean")
+    public Map<String, Object> cleanExpiredUploads() {
+        log.info("[DELETE] cleaning expired unbound uploads");
+        int removed = adminService.bindAndCleanUploads();
+        return Map.of("removed", removed);
     }
 }

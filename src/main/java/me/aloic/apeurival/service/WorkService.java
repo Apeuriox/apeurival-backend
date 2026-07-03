@@ -7,7 +7,7 @@ import me.aloic.apeurival.entity.dto.WorkSummaryDTO;
 
 public interface WorkService {
 
-    Page<WorkSummaryDTO> listPublishedWorks(String type, int page, int size);
+    Page<WorkSummaryDTO> listPublishedWorks(String type, Long authorId, String sort, int page, int size);
 
     WorkDetailDTO getWork(Long id);
 
@@ -15,5 +15,5 @@ public interface WorkService {
 
     WorkDetailDTO updateWork(Long id, WorkRequest request, Long authorId);
 
-    void deleteWork(Long id);
+    void deleteWork(Long id, Long userId);
 }

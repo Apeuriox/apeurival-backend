@@ -25,6 +25,8 @@ public class BlogController {
     public Page<PostSummaryDTO> listPosts(
             @RequestParam(required = false) String tag,
             @RequestParam(required = false) String category,
+            @RequestParam(required = false) Long authorId,
+            @RequestParam(required = false) String sort,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestHeader(value = "Accept-Language", defaultValue = "zh") String acceptLang) {
@@ -32,7 +34,7 @@ public class BlogController {
         log.info("[GET] handling getListPosts /api/posts in page {} with size of {}",page,size);
         String lang = acceptLang.toLowerCase().contains("en") ? "en" : "zh";
         PostCategoryEnum categoryEnum = category != null ? PostCategoryEnum.fromString(category) : null;
-        return blogService.listPublishedPosts(tag, categoryEnum, page, size, lang);
+        return blogService.listPublishedPosts(tag, categoryEnum, authorId, sort, page, size, lang);
     }
 
     @GetMapping("/{slug}")

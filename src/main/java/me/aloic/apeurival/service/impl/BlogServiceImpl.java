@@ -2,6 +2,7 @@ package me.aloic.apeurival.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import me.aloic.apeurival.converter.PostConverter;
 import me.aloic.apeurival.entity.dto.PostDetailDTO;
@@ -11,9 +12,11 @@ import me.aloic.apeurival.entity.mapper.BlogPostMapper;
 import me.aloic.apeurival.entity.mapper.UserMapper;
 import me.aloic.apeurival.entity.po.BlogPostPO;
 import me.aloic.apeurival.entity.po.UserPO;
+import me.aloic.apeurival.enums.EntityTypeEnum;
 import me.aloic.apeurival.enums.PostCategoryEnum;
 import me.aloic.apeurival.enums.RoleEnum;
 import me.aloic.apeurival.service.BlogService;
+import me.aloic.apeurival.service.OperationLogService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -27,14 +30,21 @@ public class BlogServiceImpl implements BlogService {
 
     private final BlogPostMapper blogPostMapper;
     private final UserMapper userMapper;
+    private final OperationLogService operationLogService;
+    private final ObjectMapper objectMapper;
 
-    public BlogServiceImpl(BlogPostMapper blogPostMapper, UserMapper userMapper) {
+    public BlogServiceImpl(BlogPostMapper blogPostMapper, UserMapper userMapper,
+                           OperationLogService operationLogService,
+                           ObjectMapper objectMapper) {
         this.blogPostMapper = blogPostMapper;
         this.userMapper = userMapper;
+        this.operationLogService = operationLogService;
+        this.objectMapper = objectMapper;
     }
 
     @Override
-    public Page<PostSummaryDTO> listPublishedPosts(String tag, PostCategoryEnum category, int page, int size, String lang) {
+    public Page<PostSummaryDTO> listPublishedPosts(String tag, PostCategoryEnum category, Long authorId,
+                                                    String sort, int page, int size, String lang) {
         Page<BlogPostPO> blogPostPage = new Page<>(page, size);
         QueryWrapper<BlogPostPO> wrapper = new QueryWrapper<>();
         wrapper.eq("status", 1);
@@ -44,7 +54,10 @@ public class BlogServiceImpl implements BlogService {
         if (category != null) {
             wrapper.eq("category", category);
         }
-        wrapper.orderByDesc("published_at");
+        if (authorId != null) {
+            wrapper.eq("author_id", authorId);
+        }
+        applySortToQueryWrapper(wrapper, sort);
 
         Page<BlogPostPO> result = blogPostMapper.selectPage(blogPostPage, wrapper);
 
@@ -65,7 +78,7 @@ public class BlogServiceImpl implements BlogService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found: " + slug);
         }
         return PostConverter.setupPostDetailDTO(post, lang,
-                fetchPrev(post), fetchNext(post),
+                fetchPrevPost(post), fetchNextPost(post),
                 userMapper.selectById(post.getAuthorId()));
     }
 
@@ -93,6 +106,7 @@ public class BlogServiceImpl implements BlogService {
         }
         blogPostMapper.insert(po);
         log.info("successfully create new post with slug of {}",request.getSlug());
+        operationLogService.logCreate(EntityTypeEnum.POST.getCode(), po.getId(), authorId, po);
         UserPO author = userMapper.selectById(authorId);
         return PostConverter.setupPostDetailDTO(po, "zh", null, null, author);
     }
@@ -105,6 +119,7 @@ public class BlogServiceImpl implements BlogService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found: id=" + id);
         }
         checkOwnership(po, userId);
+        BlogPostPO oldPo = clonePo(po);
         PostConverter.setupBlogPostPO(po, request);
         po.setUpdatedAt(LocalDateTime.now());
         if (po.getStatus() != null && po.getStatus() == 1 && po.getPublishedAt() == null) {
@@ -112,6 +127,7 @@ public class BlogServiceImpl implements BlogService {
         }
         blogPostMapper.updateById(po);
         log.info("successfully updated post {}",id);
+        operationLogService.logUpdate(EntityTypeEnum.POST.getCode(), id, userId, po, oldPo);
         UserPO author = userMapper.selectById(po.getAuthorId());
         return PostConverter.setupPostDetailDTO(po, "zh", null, null, author);
     }
@@ -125,6 +141,7 @@ public class BlogServiceImpl implements BlogService {
         }
         checkOwnership(po, userId);
         log.info("successfully deleted post {}",id);
+        operationLogService.logDelete(EntityTypeEnum.POST.getCode(), id, userId, po);
         blogPostMapper.deleteById(id);
     }
 
@@ -135,7 +152,7 @@ public class BlogServiceImpl implements BlogService {
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only manage your own posts");
     }
 
-    private BlogPostPO fetchPrev(BlogPostPO current) {
+    private BlogPostPO fetchPrevPost(BlogPostPO current) {
         return blogPostMapper.selectOne(
                 new QueryWrapper<BlogPostPO>()
                         .eq("status", 1)
@@ -144,7 +161,7 @@ public class BlogServiceImpl implements BlogService {
                         .last("LIMIT 1"));
     }
 
-    private BlogPostPO fetchNext(BlogPostPO current) {
+    private BlogPostPO fetchNextPost(BlogPostPO current) {
         return blogPostMapper.selectOne(
                 new QueryWrapper<BlogPostPO>()
                         .eq("status", 1)
@@ -153,5 +170,25 @@ public class BlogServiceImpl implements BlogService {
                         .last("LIMIT 1"));
     }
 
+    private void applySortToQueryWrapper(QueryWrapper<BlogPostPO> wrapper, String sort) {
+        if (sort == null || "newest".equalsIgnoreCase(sort)) {
+            wrapper.orderByDesc("published_at");
+        } else if ("oldest".equalsIgnoreCase(sort)) {
+            wrapper.orderByAsc("published_at");
+        } else if ("title_asc".equalsIgnoreCase(sort)) {
+            wrapper.orderByAsc("title_zh");
+        } else if ("title_desc".equalsIgnoreCase(sort)) {
+            wrapper.orderByDesc("title_zh");
+        } else {
+            wrapper.orderByDesc("published_at");
+        }
+    }
 
+    private BlogPostPO clonePo(BlogPostPO po) {
+        try {
+            return objectMapper.readValue(objectMapper.writeValueAsString(po), BlogPostPO.class);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to clone entity", e);
+        }
+    }
 }

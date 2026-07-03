@@ -2,6 +2,7 @@ package me.aloic.apeurival.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import me.aloic.apeurival.converter.WorkConverter;
 import me.aloic.apeurival.entity.dto.WorkDetailDTO;
@@ -21,6 +22,8 @@ import me.aloic.apeurival.entity.po.VideoWorkPO;
 import me.aloic.apeurival.entity.po.WorkImagePO;
 import me.aloic.apeurival.entity.po.WorkMomentPO;
 import me.aloic.apeurival.entity.po.WorkPO;
+import me.aloic.apeurival.enums.EntityTypeEnum;
+import me.aloic.apeurival.service.OperationLogService;
 import me.aloic.apeurival.service.WorkService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -41,6 +44,8 @@ public class WorkServiceImpl implements WorkService {
     private final WorkImageMapper workImageMapper;
     private final WorkMomentMapper workMomentMapper;
     private final UserMapper userMapper;
+    private final OperationLogService operationLogService;
+    private final ObjectMapper objectMapper;
 
     public WorkServiceImpl(WorkMapper workMapper,
                            CodeWorkMapper codeWorkMapper,
@@ -48,7 +53,9 @@ public class WorkServiceImpl implements WorkService {
                            VideoWorkMapper videoWorkMapper,
                            WorkImageMapper workImageMapper,
                            WorkMomentMapper workMomentMapper,
-                           UserMapper userMapper) {
+                           UserMapper userMapper,
+                           OperationLogService operationLogService,
+                           ObjectMapper objectMapper) {
         this.workMapper = workMapper;
         this.codeWorkMapper = codeWorkMapper;
         this.imageWorkMapper = imageWorkMapper;
@@ -56,17 +63,22 @@ public class WorkServiceImpl implements WorkService {
         this.workImageMapper = workImageMapper;
         this.workMomentMapper = workMomentMapper;
         this.userMapper = userMapper;
+        this.operationLogService = operationLogService;
+        this.objectMapper = objectMapper;
     }
 
     @Override
-    public Page<WorkSummaryDTO> listPublishedWorks(String type, int page, int size) {
+    public Page<WorkSummaryDTO> listPublishedWorks(String type, Long authorId, String sort, int page, int size) {
         Page<WorkPO> poPage = new Page<>(page, size);
         QueryWrapper<WorkPO> wrapper = new QueryWrapper<>();
         wrapper.eq("status", 1);
         if (type != null && !type.isBlank()) {
             wrapper.eq("type", type.toUpperCase());
         }
-        wrapper.orderByDesc("created_at");
+        if (authorId != null) {
+            wrapper.eq("author_id", authorId);
+        }
+        applySort(wrapper, sort);
 
         Page<WorkPO> result = workMapper.selectPage(poPage, wrapper);
         Page<WorkSummaryDTO> dtoPage = new Page<>(page, size, result.getTotal());
@@ -95,6 +107,7 @@ public class WorkServiceImpl implements WorkService {
         po.setUpdatedAt(LocalDateTime.now());
         workMapper.insert(po);
         insertSubRecord(po.getId(), req);
+        operationLogService.logCreate(EntityTypeEnum.WORK.getCode(), po.getId(), authorId, po);
         return buildDetail(po);
     }
 
@@ -105,23 +118,26 @@ public class WorkServiceImpl implements WorkService {
         if (po == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Work not found");
         }
+        WorkPO oldPo = clonePo(po);
         applyRequest(po, req);
         po.setUpdatedAt(LocalDateTime.now());
         workMapper.updateById(po);
         deleteSubRecord(id, po.getType());
         insertSubRecord(id, req);
+        operationLogService.logUpdate(EntityTypeEnum.WORK.getCode(), id, authorId, po, oldPo);
         return buildDetail(po);
     }
 
     @Override
     @Transactional
-    public void deleteWork(Long id) {
+    public void deleteWork(Long id, Long userId) {
         WorkPO po = workMapper.selectById(id);
         if (po == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Work not found");
         }
         deleteSubRecord(id, po.getType());
         workMapper.deleteById(id);
+        operationLogService.logDelete(EntityTypeEnum.WORK.getCode(), id, userId, po);
     }
 
     private WorkDetailDTO buildDetail(WorkPO po) {
@@ -216,5 +232,27 @@ public class WorkServiceImpl implements WorkService {
         if (req.getCoverUrl() != null) po.setCoverUrl(req.getCoverUrl());
         if (req.getTags() != null) po.setTags(req.getTags());
         if (req.getStatus() != null) po.setStatus(req.getStatus());
+    }
+
+    private void applySort(QueryWrapper<WorkPO> wrapper, String sort) {
+        if (sort == null || "newest".equalsIgnoreCase(sort)) {
+            wrapper.orderByDesc("created_at");
+        } else if ("oldest".equalsIgnoreCase(sort)) {
+            wrapper.orderByAsc("created_at");
+        } else if ("title_asc".equalsIgnoreCase(sort)) {
+            wrapper.orderByAsc("title");
+        } else if ("title_desc".equalsIgnoreCase(sort)) {
+            wrapper.orderByDesc("title");
+        } else {
+            wrapper.orderByDesc("created_at");
+        }
+    }
+
+    private WorkPO clonePo(WorkPO po) {
+        try {
+            return objectMapper.readValue(objectMapper.writeValueAsString(po), WorkPO.class);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to clone entity", e);
+        }
     }
 }

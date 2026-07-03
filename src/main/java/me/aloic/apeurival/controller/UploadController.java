@@ -2,6 +2,8 @@ package me.aloic.apeurival.controller;
 
 import lombok.extern.slf4j.Slf4j;
 import me.aloic.apeurival.config.UploadPathConfig;
+import me.aloic.apeurival.entity.mapper.UploadMetaMapper;
+import me.aloic.apeurival.entity.po.UploadMetaPO;
 import me.aloic.apeurival.util.CommonTool;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -17,9 +19,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -31,14 +31,17 @@ public class UploadController {
     private final Path uploadDir;
     private final long maxSize;
     private final List<String> allowedTypes;
+    private final UploadMetaMapper uploadMetaMapper;
 
     public UploadController(
             UploadPathConfig uploadPathConfig,
             @Value("${app.upload.image-max-size}") long maxSize,
-            @Value("${app.upload.allowed-types}") List<String> allowedTypes) {
+            @Value("${app.upload.allowed-types}") List<String> allowedTypes,
+            UploadMetaMapper uploadMetaMapper) {
         this.maxSize = maxSize;
         this.allowedTypes = allowedTypes;
         this.uploadDir = Paths.get(uploadPathConfig.resolve(), "images").toAbsolutePath();
+        this.uploadMetaMapper = uploadMetaMapper;
     }
 
     @PostMapping("/image")
@@ -73,6 +76,12 @@ public class UploadController {
             } else {
                 log.info("Image upload dedup: {} already exists", filename);
             }
+
+            UploadMetaPO meta = new UploadMetaPO();
+            meta.setFilename(filename);
+            meta.setBound(false);
+            meta.setCreatedAt(LocalDateTime.now());
+            uploadMetaMapper.insert(meta);
 
             return ResponseEntity.ok(Map.of("url", "/uploads/images/" + filename));
         } catch (IOException e) {
