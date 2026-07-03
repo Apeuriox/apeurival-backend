@@ -16,6 +16,7 @@ public interface VaultItemMapper extends BaseMapper<VaultItemPO> {
 
     Page<VaultItemPO> selectGroupItemsPage(Page<VaultItemPO> page,
                                            @Param("groupId") Long groupId,
+                                           @Param("ownerId") Long ownerId,
                                            @Param("authorName") String authorName,
                                            @Param("visibilities") java.util.List<String> visibilities);
 

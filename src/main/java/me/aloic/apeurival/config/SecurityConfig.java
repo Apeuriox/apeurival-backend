@@ -1,5 +1,6 @@
 package me.aloic.apeurival.config;
 
+import me.aloic.apeurival.enums.RoleEnum;
 import me.aloic.apeurival.security.JwtAuthFilter;
 import me.aloic.apeurival.interceptor.RateLimitFilter;
 import org.springframework.context.annotation.Bean;
@@ -44,21 +45,21 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/auth/oauth/exchange").permitAll()
                 .requestMatchers("/api/auth/**").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/posts/**").hasAnyRole("EDITOR", "ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/api/posts/**").hasAnyRole("EDITOR", "ADMIN")
-                .requestMatchers(HttpMethod.DELETE, "/api/posts/**").hasAnyRole("EDITOR", "ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/posts/**").hasAnyRole(RoleEnum.EDITOR.getRoleString(), RoleEnum.ADMIN.getRoleString())
+                .requestMatchers(HttpMethod.PUT, "/api/posts/**").hasAnyRole(RoleEnum.EDITOR.getRoleString(), RoleEnum.ADMIN.getRoleString())
+                .requestMatchers(HttpMethod.DELETE, "/api/posts/**").hasAnyRole(RoleEnum.EDITOR.getRoleString(), RoleEnum.ADMIN.getRoleString())
                 .requestMatchers("/uploads/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/works/**").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/works/**").hasAnyRole("EDITOR", "ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/api/works/**").hasAnyRole("EDITOR", "ADMIN")
-                .requestMatchers(HttpMethod.DELETE, "/api/works/**").hasAnyRole("EDITOR", "ADMIN")
-                .requestMatchers("/api/upload/**").hasAnyRole("EDITOR", "ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/works/**").hasAnyRole(RoleEnum.EDITOR.getRoleString(), RoleEnum.ADMIN.getRoleString())
+                .requestMatchers(HttpMethod.PUT, "/api/works/**").hasAnyRole(RoleEnum.EDITOR.getRoleString(), RoleEnum.ADMIN.getRoleString())
+                .requestMatchers(HttpMethod.DELETE, "/api/works/**").hasAnyRole(RoleEnum.EDITOR.getRoleString(), RoleEnum.ADMIN.getRoleString())
+                .requestMatchers("/api/upload/**").hasAnyRole(RoleEnum.EDITOR.getRoleString(), RoleEnum.ADMIN.getRoleString())
                 .requestMatchers(HttpMethod.GET, "/api/vault/groups").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/vault/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/vault/**").authenticated()
                 .requestMatchers(HttpMethod.PUT, "/api/vault/**").authenticated()
                 .requestMatchers(HttpMethod.DELETE, "/api/vault/**").authenticated()
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/admin/**").hasRole(RoleEnum.ADMIN.getRoleString())
                 .anyRequest().authenticated()
             )
             .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)

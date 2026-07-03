@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import me.aloic.apeurival.entity.dto.PostDetailDTO;
 import me.aloic.apeurival.entity.dto.PostRequest;
 import me.aloic.apeurival.entity.dto.PostSummaryDTO;
+import me.aloic.apeurival.enums.PostCategoryEnum;
 import me.aloic.apeurival.service.BlogService;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -23,13 +24,15 @@ public class BlogController {
     @GetMapping
     public Page<PostSummaryDTO> listPosts(
             @RequestParam(required = false) String tag,
+            @RequestParam(required = false) String category,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestHeader(value = "Accept-Language", defaultValue = "zh") String acceptLang) {
 
         log.info("[GET] handling getListPosts /api/posts in page {} with size of {}",page,size);
         String lang = acceptLang.toLowerCase().contains("en") ? "en" : "zh";
-        return blogService.listPublishedPosts(tag, page, size, lang);
+        PostCategoryEnum categoryEnum = category != null ? PostCategoryEnum.fromString(category) : null;
+        return blogService.listPublishedPosts(tag, categoryEnum, page, size, lang);
     }
 
     @GetMapping("/{slug}")

@@ -19,6 +19,10 @@
     <select id="selectGroupItemsPage" resultType="me.aloic.apeurival.entity.po.VaultItemPO">
         SELECT * FROM vault_items
         WHERE group_id = #{groupId}
+        <if test="ownerId != null">
+            AND owner_id = #{ownerId}
+            AND (author_name IS NULL OR author_name = '')
+        </if>
         <if test="authorName != null and authorName != ''">
             AND author_name = #{authorName}
         </if>
@@ -37,7 +41,6 @@
             AND (author_name IS NULL OR author_name = '')
         </if>
         <if test="authorName != null and authorName != ''">
-            AND owner_id IS NULL
             AND author_name = #{authorName}
         </if>
         AND visibility IN

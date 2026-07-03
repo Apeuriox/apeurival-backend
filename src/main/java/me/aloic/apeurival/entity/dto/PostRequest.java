@@ -1,6 +1,7 @@
 package me.aloic.apeurival.entity.dto;
 
 import lombok.Data;
+import me.aloic.apeurival.enums.PostCategoryEnum;
 
 @Data
 public class PostRequest {
@@ -12,5 +13,6 @@ public class PostRequest {
     private String contentMd;
     private String coverUrl;
     private String tags;
+    private PostCategoryEnum category;
     private Integer status;
 }

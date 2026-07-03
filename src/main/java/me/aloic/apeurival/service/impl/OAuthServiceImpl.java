@@ -8,6 +8,7 @@ import me.aloic.apeurival.entity.mapper.UserMapper;
 import me.aloic.apeurival.entity.mapper.UserOAuthMapper;
 import me.aloic.apeurival.entity.po.UserOAuthPO;
 import me.aloic.apeurival.entity.po.UserPO;
+import me.aloic.apeurival.enums.RoleEnum;
 import me.aloic.apeurival.security.JwtUtils;
 import me.aloic.apeurival.security.OAuthStateStore;
 import me.aloic.apeurival.security.TokenEncryptor;
@@ -87,7 +88,7 @@ public class OAuthServiceImpl implements OAuthService {
             user.setDisplayName(userInfo.providerUsername());
             user.setAvatarUrl(userInfo.avatarUrl());
             user.setPasswordHash("");
-            user.setRole("USER");
+            user.setRole(RoleEnum.USER.name());
             user.setCreatedAt(LocalDateTime.now());
             user.setUpdatedAt(LocalDateTime.now());
             userMapper.insert(user);
@@ -102,7 +103,7 @@ public class OAuthServiceImpl implements OAuthService {
             userOAuthMapper.insert(binding);
         }
 
-        return jwtUtils.generateToken(user.getId(), user.getUsername(), user.getRole());
+        return jwtUtils.generateToken(user.getId(), user.getUsername(), RoleEnum.fromString(user.getRole()));
     }
 
     @Override

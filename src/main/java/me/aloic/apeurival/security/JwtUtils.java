@@ -4,6 +4,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import lombok.extern.slf4j.Slf4j;
 import me.aloic.apeurival.config.UploadDirInitializer;
+import me.aloic.apeurival.enums.RoleEnum;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,13 +29,13 @@ public class JwtUtils {
         this.expirationMs = days * 24 * 60 * 60 * 1000L;
     }
 
-    public String generateToken(Long userId, String username, String role) {
+    public String generateToken(Long userId, String username, RoleEnum role) {
         Date now = new Date();
         log.info("Token issuing for {}, date: {}", username, now);
         return Jwts.builder()
                 .subject(String.valueOf(userId))
                 .claim("username", username)
-                .claim("role", role)
+                .claim("role", role.getRoleString())
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + expirationMs))
                 .signWith(key)
@@ -47,7 +48,7 @@ public class JwtUtils {
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
-        log.info("Token parsed for {}, Issued at: {}", parsedToken.getIssuer(), parsedToken.getIssuedAt());
+        log.debug("Token parsed for {}, Issued at: {}", parsedToken.get("username"), parsedToken.getIssuedAt());
         return parsedToken;
     }
 

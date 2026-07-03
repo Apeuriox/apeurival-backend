@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import me.aloic.apeurival.entity.dto.LoginRequest;
 import me.aloic.apeurival.entity.dto.RegisterRequest;
 import me.aloic.apeurival.entity.dto.UserDTO;
+import me.aloic.apeurival.enums.RoleEnum;
 import me.aloic.apeurival.security.JwtUtils;
 import me.aloic.apeurival.security.OAuthStateStore;
 import me.aloic.apeurival.service.OAuthService;
@@ -45,7 +46,7 @@ public class AuthController {
     public ResponseEntity<Map<String, Object>> register(@RequestBody RegisterRequest request) {
         log.info("[POST] handling new user register /api/auth/register target username： {}",request.getUsername());
         UserDTO user = userService.register(request);
-        String token = jwtUtils.generateToken(user.getId(), user.getUsername(), user.getRole());
+        String token = jwtUtils.generateToken(user.getId(), user.getUsername(), RoleEnum.fromString(user.getRole()));
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(Map.of("token", token, "user", user));
     }
@@ -54,7 +55,7 @@ public class AuthController {
     public ResponseEntity<Map<String, Object>> login(@RequestBody LoginRequest request) {
         log.info("[POST] handling user login /api/auth/login target username： {}",request.getUsername());
         UserDTO user = userService.login(request);
-        String token = jwtUtils.generateToken(user.getId(), user.getUsername(), user.getRole());
+        String token = jwtUtils.generateToken(user.getId(), user.getUsername(), RoleEnum.fromString(user.getRole()));
         return ResponseEntity.ok(Map.of("token", token, "user", user));
     }
 

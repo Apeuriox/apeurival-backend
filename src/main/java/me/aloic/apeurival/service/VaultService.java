@@ -16,9 +16,9 @@ public interface VaultService {
                                         String userRole, Long currentUserId,
                                         int page, int size);
 
-    VaultItemDTO createSingleVaultItem(VaultItemRequest request, Long ownerId);
+    VaultItemDTO createSingleVaultItem(VaultItemRequest request, Long ownerId, String userRole);
 
-    List<VaultItemDTO> batchCreate(List<VaultItemRequest> requests, Long ownerId);
+    List<VaultItemDTO> batchCreate(List<VaultItemRequest> requests, Long ownerId, String userRole);
 
     VaultItemDTO updateVaultItem(Long id, VaultItemRequest request, Long userId);
 

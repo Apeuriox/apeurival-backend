@@ -10,6 +10,7 @@ import me.aloic.apeurival.entity.mapper.UserMapper;
 import me.aloic.apeurival.entity.mapper.UserOAuthMapper;
 import me.aloic.apeurival.entity.po.UserOAuthPO;
 import me.aloic.apeurival.entity.po.UserPO;
+import me.aloic.apeurival.enums.RoleEnum;
 import me.aloic.apeurival.service.UserService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -63,7 +64,7 @@ public class UserServiceImpl implements UserService {
         po.setPasswordHash(passwordEncoder.encode(req.getPassword()));
         po.setEmail(req.getEmail());
         po.setDisplayName(req.getDisplayName() != null ? req.getDisplayName() : req.getUsername());
-        po.setRole("USER");
+        po.setRole(RoleEnum.USER.name());
         po.setCreatedAt(LocalDateTime.now());
         po.setUpdatedAt(LocalDateTime.now());
         userMapper.insert(po);

@@ -1,5 +1,6 @@
 package me.aloic.apeurival.util;
 
+import me.aloic.apeurival.enums.RoleEnum;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 
@@ -9,6 +10,16 @@ import java.util.HexFormat;
 
 public class CommonTool
 {
+    public static RoleEnum extractRole(Authentication auth) {
+        if (auth == null) return null;
+        return auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .map(RoleEnum::fromAuthority)
+                .filter(r -> r != null)
+                .findFirst().orElse(null);
+    }
+
+    @Deprecated
     public static String extractRoleCutPrefix(Authentication auth) {
         if (auth == null) return null;
         return auth.getAuthorities().stream()

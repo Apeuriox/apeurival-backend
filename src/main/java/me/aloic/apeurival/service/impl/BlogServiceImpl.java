@@ -11,6 +11,8 @@ import me.aloic.apeurival.entity.mapper.BlogPostMapper;
 import me.aloic.apeurival.entity.mapper.UserMapper;
 import me.aloic.apeurival.entity.po.BlogPostPO;
 import me.aloic.apeurival.entity.po.UserPO;
+import me.aloic.apeurival.enums.PostCategoryEnum;
+import me.aloic.apeurival.enums.RoleEnum;
 import me.aloic.apeurival.service.BlogService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -32,12 +34,15 @@ public class BlogServiceImpl implements BlogService {
     }
 
     @Override
-    public Page<PostSummaryDTO> listPublishedPosts(String tag, int page, int size, String lang) {
+    public Page<PostSummaryDTO> listPublishedPosts(String tag, PostCategoryEnum category, int page, int size, String lang) {
         Page<BlogPostPO> blogPostPage = new Page<>(page, size);
         QueryWrapper<BlogPostPO> wrapper = new QueryWrapper<>();
         wrapper.eq("status", 1);
         if (tag != null && !tag.isBlank()) {
             wrapper.apply("FIND_IN_SET({0}, tags)", tag);
+        }
+        if (category != null) {
+            wrapper.eq("category", category);
         }
         wrapper.orderByDesc("published_at");
 
@@ -45,7 +50,7 @@ public class BlogServiceImpl implements BlogService {
 
         Page<PostSummaryDTO> dtoPage = new Page<>(page, size, result.getTotal());
         dtoPage.setRecords(result.getRecords().stream()
-                .map(po -> PostConverter.toSummary(po, lang, userMapper.selectById(po.getAuthorId())))
+                .map(po -> PostConverter.setupPostSummaryDTO(po, lang, userMapper.selectById(po.getAuthorId())))
                 .toList());
         log.info("Final post size: {}",dtoPage.getTotal());
         return dtoPage;
@@ -59,7 +64,7 @@ public class BlogServiceImpl implements BlogService {
             log.warn("Cant get target post, requested slug was {}",slug);
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found: " + slug);
         }
-        return PostConverter.toDetail(post, lang,
+        return PostConverter.setupPostDetailDTO(post, lang,
                 fetchPrev(post), fetchNext(post),
                 userMapper.selectById(post.getAuthorId()));
     }
@@ -79,7 +84,7 @@ public class BlogServiceImpl implements BlogService {
             request.setSlug(String.valueOf(UUID.randomUUID()));
         }
         BlogPostPO po = new BlogPostPO();
-        setupBlogPostPO(po, request);
+        PostConverter.setupBlogPostPO(po, request);
         po.setAuthorId(authorId);
         po.setCreatedAt(LocalDateTime.now());
         po.setUpdatedAt(LocalDateTime.now());
@@ -89,7 +94,7 @@ public class BlogServiceImpl implements BlogService {
         blogPostMapper.insert(po);
         log.info("successfully create new post with slug of {}",request.getSlug());
         UserPO author = userMapper.selectById(authorId);
-        return PostConverter.toDetail(po, "zh", null, null, author);
+        return PostConverter.setupPostDetailDTO(po, "zh", null, null, author);
     }
 
     @Override
@@ -100,7 +105,7 @@ public class BlogServiceImpl implements BlogService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found: id=" + id);
         }
         checkOwnership(po, userId);
-        setupBlogPostPO(po, request);
+        PostConverter.setupBlogPostPO(po, request);
         po.setUpdatedAt(LocalDateTime.now());
         if (po.getStatus() != null && po.getStatus() == 1 && po.getPublishedAt() == null) {
             po.setPublishedAt(LocalDateTime.now());
@@ -108,7 +113,7 @@ public class BlogServiceImpl implements BlogService {
         blogPostMapper.updateById(po);
         log.info("successfully updated post {}",id);
         UserPO author = userMapper.selectById(po.getAuthorId());
-        return PostConverter.toDetail(po, "zh", null, null, author);
+        return PostConverter.setupPostDetailDTO(po, "zh", null, null, author);
     }
 
     @Override
@@ -126,7 +131,7 @@ public class BlogServiceImpl implements BlogService {
     private void checkOwnership(BlogPostPO po, Long userId) {
         if (po.getAuthorId() != null && po.getAuthorId().equals(userId)) return;
         UserPO caller = userMapper.selectById(userId);
-        if (caller != null && "ADMIN".equals(caller.getRole())) return;
+        if (caller != null && RoleEnum.ADMIN == RoleEnum.fromString(caller.getRole())) return;
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only manage your own posts");
     }
 
@@ -148,15 +153,5 @@ public class BlogServiceImpl implements BlogService {
                         .last("LIMIT 1"));
     }
 
-    private void setupBlogPostPO(BlogPostPO po, PostRequest req) {
-        po.setSlug(req.getSlug());
-        po.setTitleZh(req.getTitleZh());
-        po.setTitleEn(req.getTitleEn());
-        po.setExcerptZh(req.getExcerptZh());
-        po.setExcerptEn(req.getExcerptEn());
-        po.setContentMd(req.getContentMd());
-        po.setCoverUrl(req.getCoverUrl());
-        po.setTags(req.getTags());
-        po.setStatus(req.getStatus());
-    }
+
 }

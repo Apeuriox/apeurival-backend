@@ -96,7 +96,7 @@ public class VaultServiceImpl implements VaultService {
         }
         Page<VaultItemPO> result;
         if (groupId != null) {
-            result = vaultItemMapper.selectGroupItemsPage(poPage, groupId, authorName, visibilities);
+            result = vaultItemMapper.selectGroupItemsPage(poPage, groupId, ownerId , authorName, visibilities);
         } else {
             result = vaultItemMapper.selectNonGroupItemsPage(poPage, ownerId, authorName, visibilities);
         }
@@ -110,14 +110,16 @@ public class VaultServiceImpl implements VaultService {
     }
 
     @Override
-    public VaultItemDTO createSingleVaultItem(VaultItemRequest req, Long ownerId) {
+    public VaultItemDTO createSingleVaultItem(VaultItemRequest req, Long ownerId, String userRole) {
+        validateAuthorName(req.getAuthorName(), userRole);
         VaultItemPO po = insertOne(req, ownerId);
         return VaultConverter.setupVaultItemDTO(po, userMapper.selectById(ownerId));
     }
 
     @Override
     @Transactional
-    public List<VaultItemDTO> batchCreate(List<VaultItemRequest> requests, Long ownerId) {
+    public List<VaultItemDTO> batchCreate(List<VaultItemRequest> requests, Long ownerId, String userRole) {
+        validateAuthorName(requests.getFirst().getAuthorName(), userRole);
         UserPO owner = userMapper.selectById(ownerId);
         List<VaultItemDTO> result = new ArrayList<>();
         for (VaultItemRequest req : requests) {
@@ -217,6 +219,13 @@ public class VaultServiceImpl implements VaultService {
             return;
         }
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not a member of this group");
+    }
+
+    private void validateAuthorName(String authorName, String userRole) {
+        if (authorName != null && !authorName.isBlank()
+                && !"ADMIN".equals(userRole) && !"EDITOR".equals(userRole)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only EDITOR/ADMIN can assign external author");
+        }
     }
 
 }

@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import me.aloic.apeurival.enums.PostCategoryEnum;
 
 import java.time.LocalDateTime;
 
@@ -31,6 +32,8 @@ public class BlogPostPO
       private String contentMd;
 
       private String coverUrl;
+
+      private PostCategoryEnum category;
 
       private String tags;              // "announcement,tech"
 

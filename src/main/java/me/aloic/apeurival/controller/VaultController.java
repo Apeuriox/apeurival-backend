@@ -46,6 +46,9 @@ public class VaultController {
             Authentication auth) {
         log.info("[GET] handling list /api/vault owner={} authorName={} groupId={}", owner, authorName, groupId);
         String role = CommonTool.extractRoleCutPrefix(auth);
+        if (owner!=null && authorName!=null) {
+            owner=null;
+        }
         Long currentUserId = auth != null ? Long.valueOf(auth.getPrincipal().toString()) : null;
         return vaultService.listVisibleItemsWithCurrentRole(owner, authorName, groupId, role, currentUserId, page, size);
     }
@@ -54,14 +57,16 @@ public class VaultController {
     public VaultItemDTO create(@RequestBody VaultItemRequest request, Authentication auth) {
         log.info("[POST] handling create /api/vault");
         Long userId = Long.valueOf(auth.getPrincipal().toString());
-        return vaultService.createSingleVaultItem(request, userId);
+        String role = CommonTool.extractRoleCutPrefix(auth);
+        return vaultService.createSingleVaultItem(request, userId, role);
     }
 
     @PostMapping("/batch")
     public List<VaultItemDTO> batchCreate(@RequestBody List<VaultItemRequest> requests, Authentication auth) {
         log.info("[POST] handling batchCreate /api/vault/batch size={}", requests.size());
         Long userId = Long.valueOf(auth.getPrincipal().toString());
-        return vaultService.batchCreate(requests, userId);
+        String role = CommonTool.extractRoleCutPrefix(auth);
+        return vaultService.batchCreate(requests, userId, role);
     }
 
     @PutMapping("/{id}")

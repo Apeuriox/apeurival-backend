@@ -1,6 +1,7 @@
 package me.aloic.apeurival.entity.dto;
 
 import lombok.Data;
+import me.aloic.apeurival.enums.PostCategoryEnum;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -11,6 +12,7 @@ public class PostSummaryDTO {
     private String slug;
     private String title;
     private String excerpt;
+    private PostCategoryEnum category;
     private List<String> tags;
     private LocalDate date;
     private PostDetailDTO.AuthorBrief author;
