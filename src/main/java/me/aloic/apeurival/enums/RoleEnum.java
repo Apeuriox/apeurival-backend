@@ -11,13 +11,17 @@ import java.util.List;
 @AllArgsConstructor
 public enum RoleEnum {
 
-    USER("USER", "User"),
-    OSU("OSU", "User"),
-    EDITOR("EDITOR", "Editor"),
-    ADMIN("ADMIN", "Admin");
+    USER("USER", "User", 0),
+    OSU("OSU", "User", 10),
+    EDITOR("EDITOR", "Editor", 50),
+    ADMIN("ADMIN", "Admin", 100);
+
+    private static final int L_EDITOR = 50;
+    private static final int L_ADMIN = 100;
 
     private final String roleString;
     private final String roleShowcase;
+    private final int level;
 
     public static RoleEnum fromString(String s) {
         if (s == null || s.isBlank()) {
@@ -43,32 +47,36 @@ public enum RoleEnum {
     }
 
     public List<String> visibleVisibilities(boolean isOwner) {
-        if (this == ADMIN || isOwner) return List.of("PUBLIC", "MEMBERS", "RESTRICTED", "PRIVATE");
-        if (this == EDITOR)           return List.of("PUBLIC", "MEMBERS", "RESTRICTED");
+        if (isOwner || this.level >= L_ADMIN) return List.of("PUBLIC", "MEMBERS", "RESTRICTED", "PRIVATE");
+        if (this.level >= L_EDITOR)            return List.of("PUBLIC", "MEMBERS", "RESTRICTED");
         return List.of("PUBLIC", "MEMBERS");
     }
 
     public boolean canAssignExternalAuthor() {
-        return this == ADMIN || this == EDITOR;
+        return this.level >= L_EDITOR;
     }
 
     public boolean canManageSpecificGroup() {
-        return this == ADMIN || this == EDITOR;
+        return this.level >= L_EDITOR;
     }
 
     public boolean canCreateGroup() {
-        return this == ADMIN;
-    }
-
-    public boolean isAdminOrEditor() {
-        return this == ADMIN || this == EDITOR;
+        return this.level >= L_ADMIN;
     }
 
     public boolean isAdmin() {
-        return this == ADMIN;
+        return this.level >= L_ADMIN;
     }
 
     public boolean isAtLeastEditor() {
-        return this == ADMIN || this == EDITOR;
+        return this.level >= L_EDITOR;
+    }
+
+    public boolean isOsuOrAbove() {
+        return this.level >= OSU.level;
+    }
+
+    public boolean isAtLeast(RoleEnum min) {
+        return this.level >= min.level;
     }
 }

@@ -22,9 +22,11 @@ import java.util.List;
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtUtils jwtUtils;
+    private final TokenInvalidationStore invalidationStore;
 
-    public JwtAuthFilter(JwtUtils jwtUtils) {
+    public JwtAuthFilter(JwtUtils jwtUtils, TokenInvalidationStore invalidationStore) {
         this.jwtUtils = jwtUtils;
+        this.invalidationStore = invalidationStore;
     }
 
     @Override
@@ -54,6 +56,20 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 response.setContentType("application/json");
                 response.getWriter().write("{\"error\":\"Missing role in token\"}");
                 return;
+            }
+
+            Long userIdLong = Long.valueOf(userId);
+            Long iat = claims.get("iat", Long.class);
+            if (iat != null) {
+                if (!invalidationStore.isTokenValid(userIdLong, iat)) {
+                    log.warn("Token invalidated for user {}, issued at {}", userId, iat);
+                    response.setStatus(401);
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"error\":\"Token has been invalidated\"}");
+                    return;
+                }
+            } else {
+                log.debug("Token missing iat claim for user {} (legacy token, skipping invalidation check)", userId);
             }
 
             UsernamePasswordAuthenticationToken auth =

@@ -14,6 +14,7 @@ import me.aloic.apeurival.entity.po.WorkPO;
 import me.aloic.apeurival.enums.EntityTypeEnum;
 import me.aloic.apeurival.enums.OperationTypeEnum;
 import me.aloic.apeurival.scheduled.FileCleanupScheduler;
+import me.aloic.apeurival.security.TokenInvalidationStore;
 import me.aloic.apeurival.service.AdminService;
 import me.aloic.apeurival.service.OperationLogService;
 import org.springframework.http.HttpStatus;
@@ -34,19 +35,22 @@ public class AdminServiceImpl implements AdminService {
     private final WorkMapper workMapper;
     private final VaultItemMapper vaultItemMapper;
     private final FileCleanupScheduler fileCleanupScheduler;
+    private final TokenInvalidationStore invalidationStore;
 
     public AdminServiceImpl(OperationLogService operationLogService,
                             ObjectMapper objectMapper,
                             BlogPostMapper blogPostMapper,
                             WorkMapper workMapper,
                             VaultItemMapper vaultItemMapper,
-                            FileCleanupScheduler fileCleanupScheduler) {
+                            FileCleanupScheduler fileCleanupScheduler,
+                            TokenInvalidationStore invalidationStore) {
         this.operationLogService = operationLogService;
         this.objectMapper = objectMapper;
         this.blogPostMapper = blogPostMapper;
         this.workMapper = workMapper;
         this.vaultItemMapper = vaultItemMapper;
         this.fileCleanupScheduler = fileCleanupScheduler;
+        this.invalidationStore = invalidationStore;
     }
 
     @Override
@@ -145,5 +149,11 @@ public class AdminServiceImpl implements AdminService {
         int bound = fileCleanupScheduler.bindReferencedFiles();
         int removed = fileCleanupScheduler.cleanExpiredUnboundFiles();
         return removed;
+    }
+
+    @Override
+    public void invalidateUserTokens(Long userId) {
+        invalidationStore.invalidateAllTokens(userId);
+        log.info("Admin invalidated all tokens for user {}", userId);
     }
 }

@@ -23,6 +23,7 @@ import me.aloic.apeurival.entity.po.WorkImagePO;
 import me.aloic.apeurival.entity.po.WorkMomentPO;
 import me.aloic.apeurival.entity.po.WorkPO;
 import me.aloic.apeurival.enums.EntityTypeEnum;
+import me.aloic.apeurival.enums.RoleEnum;
 import me.aloic.apeurival.service.OperationLogService;
 import me.aloic.apeurival.service.WorkService;
 import org.springframework.http.HttpStatus;
@@ -119,6 +120,7 @@ public class WorkServiceImpl implements WorkService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Work not found");
         }
         WorkPO oldPo = clonePo(po);
+        checkOwnership(po, authorId);
         applyRequest(po, req);
         po.setUpdatedAt(LocalDateTime.now());
         workMapper.updateById(po);
@@ -135,6 +137,7 @@ public class WorkServiceImpl implements WorkService {
         if (po == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Work not found");
         }
+        checkOwnership(po, userId);
         deleteSubRecord(id, po.getType());
         workMapper.deleteById(id);
         operationLogService.logDelete(EntityTypeEnum.WORK.getCode(), id, userId, po);
@@ -254,5 +257,12 @@ public class WorkServiceImpl implements WorkService {
         } catch (Exception e) {
             throw new RuntimeException("Failed to clone entity", e);
         }
+    }
+
+    private void checkOwnership(WorkPO po, Long userId) {
+        if (po.getAuthorId() != null && po.getAuthorId().equals(userId)) return;
+        UserPO caller = userMapper.selectById(userId);
+        if (caller != null && RoleEnum.ADMIN == RoleEnum.fromString(caller.getRole())) return;
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only manage your own works");
     }
 }

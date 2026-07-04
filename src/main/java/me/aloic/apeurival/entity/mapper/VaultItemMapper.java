@@ -14,6 +14,9 @@ public interface VaultItemMapper extends BaseMapper<VaultItemPO> {
 
     Page<Map<String, Object>> countByAuthorsPage(Page<?> page, @Param("groupId") Long groupId);
 
+    List<Map<String, Object>> countByAuthorsWithGroups(@Param("groupId") Long groupId,
+                                                       @Param("visibilities") java.util.List<String> visibilities);
+
     Page<VaultItemPO> selectGroupItemsPage(Page<VaultItemPO> page,
                                            @Param("groupId") Long groupId,
                                            @Param("ownerId") Long ownerId,

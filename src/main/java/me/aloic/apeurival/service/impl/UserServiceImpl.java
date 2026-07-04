@@ -11,6 +11,7 @@ import me.aloic.apeurival.entity.mapper.UserOAuthMapper;
 import me.aloic.apeurival.entity.po.UserOAuthPO;
 import me.aloic.apeurival.entity.po.UserPO;
 import me.aloic.apeurival.enums.RoleEnum;
+import me.aloic.apeurival.security.TokenInvalidationStore;
 import me.aloic.apeurival.service.UserService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -29,15 +30,18 @@ public class UserServiceImpl implements UserService {
     private final UserOAuthMapper userOAuthMapper;
     private final PasswordEncoder passwordEncoder;
     private final boolean isRegistrationOpen;
+    private final TokenInvalidationStore invalidationStore;
 
     public UserServiceImpl(UserMapper userMapper,
                            UserOAuthMapper userOAuthMapper,
                            PasswordEncoder passwordEncoder,
-                           @Value("${app.auth.registration-open}") boolean isRegistrationOpen) {
+                           @Value("${app.auth.registration-open}") boolean isRegistrationOpen,
+                           TokenInvalidationStore invalidationStore) {
         this.userMapper = userMapper;
         this.userOAuthMapper = userOAuthMapper;
         this.passwordEncoder = passwordEncoder;
         this.isRegistrationOpen = isRegistrationOpen;
+        this.invalidationStore = invalidationStore;
     }
 
     @Override
@@ -108,6 +112,8 @@ public class UserServiceImpl implements UserService {
         po.setPasswordHash(passwordEncoder.encode(newPassword));
         po.setUpdatedAt(LocalDateTime.now());
         userMapper.updateById(po);
+        invalidationStore.invalidateAllTokens(userId);
+        log.info("Password changed and all tokens invalidated for user {}", userId);
     }
 
     @Override

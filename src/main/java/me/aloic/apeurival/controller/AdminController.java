@@ -51,4 +51,11 @@ public class AdminController {
         int removed = adminService.bindAndCleanUploads();
         return Map.of("removed", removed);
     }
+
+    @PostMapping("/users/{userId}/invalidate-tokens")
+    public Map<String, Object> invalidateUserTokens(@PathVariable Long userId) {
+        log.info("[POST] invalidating all tokens for user {}", userId);
+        adminService.invalidateUserTokens(userId);
+        return Map.of("invalidated", true, "userId", userId);
+    }
 }

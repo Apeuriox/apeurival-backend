@@ -14,11 +14,14 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.UUID;
 
 
 @Component
 public class JwtUtils {
     private static final Logger log = LoggerFactory.getLogger(JwtUtils.class);
+    private static final String ISSUER = "apeurival-backend";
+
     private final SecretKey key;
     private final long expirationMs;
 
@@ -36,6 +39,9 @@ public class JwtUtils {
                 .subject(String.valueOf(userId))
                 .claim("username", username)
                 .claim("role", role.getRoleString())
+                .claim("iat", now.getTime() / 1000)
+                .id(UUID.randomUUID().toString())
+                .issuer(ISSUER)
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + expirationMs))
                 .signWith(key)
@@ -44,6 +50,7 @@ public class JwtUtils {
 
     public Claims parseToken(String token) {
         Claims parsedToken = Jwts.parser()
+                .requireIssuer(ISSUER)
                 .verifyWith(key)
                 .build()
                 .parseSignedClaims(token)

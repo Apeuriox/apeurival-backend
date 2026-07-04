@@ -16,4 +16,6 @@ public interface AdminService {
     List<UploadMetaPO> listUnboundUploads();
 
     int bindAndCleanUploads();
+
+    void invalidateUserTokens(Long userId);
 }

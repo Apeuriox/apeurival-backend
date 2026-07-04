@@ -16,6 +16,27 @@
         GROUP BY owner_id, author_name
     </select>
 
+    <select id="countByAuthorsWithGroups" resultType="java.util.HashMap">
+        SELECT vi.owner_id, vi.author_name, vi.group_id,
+               COALESCE(vg.name, '') AS group_name,
+               COUNT(*) AS item_count
+        FROM vault_items vi
+        LEFT JOIN vault_groups vg ON vi.group_id = vg.id
+        <where>
+            <if test="groupId != null">
+                vi.group_id = #{groupId}
+            </if>
+            <if test="visibilities != null and visibilities.size() > 0">
+                AND vi.visibility IN
+                <foreach collection="visibilities" item="v" open="(" separator="," close=")">
+                    #{v}
+                </foreach>
+            </if>
+        </where>
+        GROUP BY vi.owner_id, vi.author_name, vi.group_id
+        ORDER BY item_count DESC
+    </select>
+
     <select id="selectGroupItemsPage" resultType="me.aloic.apeurival.entity.po.VaultItemPO">
         SELECT * FROM vault_items
         WHERE group_id = #{groupId}
