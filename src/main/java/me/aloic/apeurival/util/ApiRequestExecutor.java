@@ -1,0 +1,192 @@
+package me.aloic.apeurival.util;
+
+import cn.hutool.http.HttpRequest;
+import cn.hutool.http.HttpResponse;
+import cn.hutool.http.HttpUtil;
+import cn.hutool.http.Method;
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.TypeReference;
+import jakarta.annotation.Resource;
+
+
+import me.aloic.apeurival.enums.HTTPTypeEnum;
+import me.aloic.apeurival.exception.LazybotRuntimeException;
+import me.aloic.apeurival.exception.NotFoundException;
+import me.aloic.apeurival.monitor.TokenMonitor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
+@Component
+public class ApiRequestExecutor
+{
+    @Resource
+    private TokenMonitor tokenMonitor;
+
+    private static final Logger logger = LoggerFactory.getLogger(ApiRequestExecutor.class);
+
+    private final int MAX_RETRIES = 3;
+
+    public <T> T execute(String url,
+                         HTTPTypeEnum type,
+                         String token,
+                         Object body,
+                         Class<T> clazz) {
+        return parseResponse(doExecute(url, type, token, body), clazz,null);
+    }
+
+    public String executeWithoutParse(String url,
+                         HTTPTypeEnum type,
+                         String token,
+                         Object body) {
+        return doExecute(url, type, token, body);
+    }
+    public String execute(String url,
+                         HTTPTypeEnum type,
+                         String token,
+                         Object body) {
+        return parseResponse(doExecute(url, type, token, body), null,null);
+    }
+
+
+    public <T> T execute(String url,
+                         HTTPTypeEnum type,
+                         String token,
+                         Object body,
+                         TypeReference<T> typeRef) {
+        return parseResponse(doExecute(url, type, token, body), null,typeRef);
+    }
+
+    public <T> T parseResponse(String respBody, Class<T> clazz, TypeReference<T> typeRef) {
+        if (clazz != null) return JSON.parseObject(respBody, clazz);
+        else if (typeRef != null) return JSON.parseObject(respBody, typeRef.getType());
+        else return (T) respBody;
+    }
+
+    private String doExecute(String url,
+                         HTTPTypeEnum type,
+                         String token,
+                         Object body)  {
+
+        for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                HttpRequest request = createRequest(type, url, token, body);
+                try (HttpResponse response = request.executeAsync())
+                {
+                    int status = response.getStatus();
+                    String respBody = response.body();
+                    if (status == 401)
+                    {
+                        logger.warn("ppy令牌过期. 正在更新...");
+                        tokenMonitor.refreshClientToken();
+                        tokenMonitor.refreshPPPlusClientToken();
+                        TimeUnit.SECONDS.sleep(10);
+                        continue;
+                    }
+                    if (status == 404)
+                    {
+                        throw new NotFoundException("请求对象不存在");
+                    }
+                    if (status >= 200 && status < 300)
+                    {
+                        logger.info("HTTP request successful: {}", url);
+                        return respBody;
+                    }
+                    else
+                    {
+                        logger.warn("HTTP 请求失败: {}, 状态码: {}, 内容: {}", url, status, respBody);
+                        throw new LazybotRuntimeException("HTTP 请求失败, 状态码: " + status);
+                    }
+                }
+            }
+            catch (NotFoundException e) {
+                throw e;
+            }
+            catch (Exception e) {
+                logger.error("请求在尝试 {} 次后失败: {}", attempt, e.getMessage());
+                if (attempt == MAX_RETRIES) {
+                    throw new LazybotRuntimeException("请求在尝试 " + MAX_RETRIES + " 次后失败: " + e.getMessage(), e);
+                }
+                try {
+                    TimeUnit.SECONDS.sleep(1);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    throw new LazybotRuntimeException("请求线程中断", interrupted);
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 执行 form-encoded POST 请求 (用于GD等不需要OAuth头的外部API)
+     * @param url 请求URL
+     * @param formBody 已编码的表单参数字符串 (e.g. "key1=val1&key2=val2")
+     * @return 响应体字符串
+     */
+    public String executeFormPost(String url, String formBody)
+    {
+        for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                HttpRequest request = HttpUtil.createPost(url)
+                        .header("Content-Type", "application/x-www-form-urlencoded")
+                        .header("User-Agent", "")
+                        .body(formBody);
+                try (HttpResponse response = request.executeAsync()) {
+                    int status = response.getStatus();
+                    String respBody = response.body();
+                    if (status == 404) {
+                        throw new NotFoundException("请求对象不存在");
+                    }
+                    if (status >= 200 && status < 300) {
+                        logger.info("Form POST successful: {}", url);
+                        return respBody;
+                    } else {
+                        logger.warn("Form POST 请求失败: {}, 状态码: {}, 内容: {}", url, status, respBody);
+                        throw new LazybotRuntimeException("Form POST 请求失败, 状态码: " + status);
+                    }
+                }
+            } catch (NotFoundException e) {
+                throw e;
+            } catch (Exception e) {
+                logger.error("Form POST 在尝试 {} 次后失败: {}", attempt, e.getMessage());
+                if (attempt == MAX_RETRIES) {
+                    throw new LazybotRuntimeException("Form POST 在尝试 " + MAX_RETRIES + " 次后失败: " + e.getMessage(), e);
+                }
+                try {
+                    TimeUnit.SECONDS.sleep(1);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    throw new LazybotRuntimeException("请求线程中断", interrupted);
+                }
+            }
+        }
+        return null;
+    }
+
+    private HttpRequest createRequest(HTTPTypeEnum type,
+                                      String url,
+                                      String token,
+                                      Object bodies) {
+
+        HttpRequest request = switch (type) {
+            case GET -> HttpUtil.createGet(url);
+            case POST -> HttpUtil.createPost(url).body(JSON.toJSONString(bodies));
+            case DELETE -> HttpUtil.createRequest(Method.DELETE, url);
+        };
+
+        request.addHeaders(setDefaultHeaders(token));
+        return request;
+    }
+    public Map<String, String> setDefaultHeaders(String token){
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Content-Type", "application/json");
+        headers.put("x-api-version","20220705");
+        if (token !=null) headers.put("Authorization", String.format("Bearer %s", token));
+        return headers;
+    }
+}

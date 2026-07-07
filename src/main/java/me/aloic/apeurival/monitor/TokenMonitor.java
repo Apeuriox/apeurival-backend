@@ -1,0 +1,108 @@
+package me.aloic.apeurival.monitor;
+
+import cn.hutool.http.HttpResponse;
+import cn.hutool.http.HttpUtil;
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONObject;
+import com.alibaba.fastjson2.TypeReference;
+import me.aloic.apeurival.entity.dto.osu.AccessTokenDTO;
+import me.aloic.apeurival.entity.dto.plus.LazybotWebResult;
+import me.aloic.apeurival.util.URLBuildUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * 定时刷新token任务，因为所有申请到的token均只有一天的有效期，所以需要在一天内刷新拿到新的token.
+ * 使用定时任务，刷新token的同时获取玩家基本信息，每12小时刷新一次。
+ */
+
+@Component
+public class TokenMonitor
+{
+    @Value("${app.oauth.osu.client-id}")
+    private Integer clientId;
+    @Value("${app.oauth.osu.client-secret}")
+    private String clientSecret;
+
+    @Value("${app.oauth.plus.client-id}")
+    private Integer lazybotClientId;
+    @Value("${app.oauth.plus.client-password}")
+    private String lazybotClientPassword;
+
+    private static final String TOKEN_URL = "https://osu.ppy.sh/oauth/token";
+    private static volatile String lazybotToken;
+    private static volatile String token;
+
+    private static final Logger logger = LoggerFactory.getLogger(TokenMonitor.class);
+
+
+    @Scheduled(cron = "0 0 0/12 * * ? ")
+    public void refreshClientToken()
+    {
+        Map<String, String> header = setupOsuHeader();
+        String queryParams = setupOsuQueryParams();
+        try (HttpResponse resp = HttpUtil.createPost(TOKEN_URL).addHeaders(header).body(queryParams).execute()) {
+            logger.info("Getting Token for client");
+            AccessTokenDTO tokenDTO = JSON.parseObject(resp.body(), AccessTokenDTO.class);
+            logger.info("successfully created client token: {}", tokenDTO.getAccess_token());
+            token= tokenDTO.getAccess_token();
+        }
+        catch (Exception e) {
+            logger.error("{} : {}", e.getClass(), e.getMessage());
+            throw new RuntimeException("刷新osu客户端Token失败");
+        }
+    }
+
+    @Scheduled(cron = "0 0 0/12 * * ? ")
+    public void refreshPPPlusClientToken()
+    {
+        String url = URLBuildUtil.buildURLOfLazybotToken(lazybotClientId,lazybotClientPassword);
+        try(HttpResponse resp = HttpUtil.createPost(url).execute()) {
+            LazybotWebResult<String> lazybotTokenJSON = JSON.parseObject(resp.body(), new TypeReference<LazybotWebResult<String>>() {});
+            lazybotToken= lazybotTokenJSON.getData();
+            logger.info("Lazybot token created: {}",lazybotTokenJSON.getData());
+        }
+        catch (Exception e) {
+            logger.error("更新PP+验证失败，请检查服务器: {} : {}", e.getClass(), e.getMessage());
+//            throw new LazybotRuntimeException("更新PP+验证失败，请检查服务器");
+        }
+    }
+    public static String getLazybotToken() {
+        if (lazybotToken == null) {
+            throw new IllegalStateException("PP+获取Token未初始化！");
+        }
+        return lazybotToken;
+    }
+    public static String getToken() {
+        if (token == null) {
+            throw new IllegalStateException("令牌尚未获取！");
+        }
+        return token;
+    }
+    private  Map<String, String > setupOsuHeader()
+    {
+        Map<String, String > heads = new HashMap<>();
+        heads.put("Accept", "application/json");
+        heads.put("Content-Type", "application/json;charset=UTF-8");
+        return heads;
+    }
+    private String setupOsuQueryParams()
+    {
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("client_id", clientId);
+        jsonObject.put("client_secret", clientSecret);
+        jsonObject.put("grant_type", "client_credentials");
+        jsonObject.put("scope", "public");
+        return jsonObject.toString();
+    }
+
+
+
+
+}
