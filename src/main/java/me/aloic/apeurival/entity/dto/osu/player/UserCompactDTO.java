@@ -2,7 +2,8 @@ package me.aloic.apeurival.entity.dto.osu.player;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import me.aloic.lazybot.osu.dao.entity.optionalattributes.player.*;
+import me.aloic.apeurival.entity.dto.osu.optionalattributes.player.*;
+
 
 import java.io.Serializable;
 

@@ -17,6 +17,7 @@ import me.aloic.apeurival.enums.PostCategoryEnum;
 import me.aloic.apeurival.enums.RoleEnum;
 import me.aloic.apeurival.service.BlogService;
 import me.aloic.apeurival.service.OperationLogService;
+import me.aloic.apeurival.service.ViewCountService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -32,14 +33,17 @@ public class BlogServiceImpl implements BlogService {
     private final UserMapper userMapper;
     private final OperationLogService operationLogService;
     private final ObjectMapper objectMapper;
+    private final ViewCountService viewCountService;
 
     public BlogServiceImpl(BlogPostMapper blogPostMapper, UserMapper userMapper,
                            OperationLogService operationLogService,
-                           ObjectMapper objectMapper) {
+                           ObjectMapper objectMapper,
+                           ViewCountService viewCountService) {
         this.blogPostMapper = blogPostMapper;
         this.userMapper = userMapper;
         this.operationLogService = operationLogService;
         this.objectMapper = objectMapper;
+        this.viewCountService = viewCountService;
     }
 
     @Override
@@ -63,7 +67,12 @@ public class BlogServiceImpl implements BlogService {
 
         Page<PostSummaryDTO> dtoPage = new Page<>(page, size, result.getTotal());
         dtoPage.setRecords(result.getRecords().stream()
-                .map(po -> PostConverter.setupPostSummaryDTO(po, lang, userMapper.selectById(po.getAuthorId())))
+                .map(po -> {
+                    long merged = viewCountService.mergePost(po.getId(),
+                            po.getViewCount() != null ? po.getViewCount() : 0);
+                    po.setViewCount(merged);
+                    return PostConverter.setupPostSummaryDTO(po, lang, userMapper.selectById(po.getAuthorId()));
+                })
                 .toList());
         log.info("Final post size: {}",dtoPage.getTotal());
         return dtoPage;
@@ -77,6 +86,10 @@ public class BlogServiceImpl implements BlogService {
             log.warn("Cant get target post, requested slug was {}",slug);
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found: " + slug);
         }
+        viewCountService.incrementPost(post.getId());
+        long merged = viewCountService.mergePost(post.getId(),
+                post.getViewCount() != null ? post.getViewCount() : 0);
+        post.setViewCount(merged);
         return PostConverter.setupPostDetailDTO(post, lang,
                 fetchPrevPost(post), fetchNextPost(post),
                 userMapper.selectById(post.getAuthorId()));

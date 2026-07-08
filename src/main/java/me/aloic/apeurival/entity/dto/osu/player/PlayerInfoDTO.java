@@ -3,8 +3,6 @@ package me.aloic.apeurival.entity.dto.osu.player;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-import me.aloic.lazybot.osu.dao.entity.optionalattributes.player.Kudosu;
-
 import java.util.List;
 
 @EqualsAndHashCode(callSuper = true)
@@ -17,7 +15,6 @@ public class PlayerInfoDTO extends UserCompactDTO
     private Boolean has_supported;
     private String interests;
     private String join_date;
-    private Kudosu kudosu;
     private String location;
     private Integer max_blocks;
     private Integer max_friends;

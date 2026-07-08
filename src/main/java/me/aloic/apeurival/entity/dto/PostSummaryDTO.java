@@ -17,4 +17,5 @@ public class PostSummaryDTO {
     private LocalDate date;
     private PostDetailDTO.AuthorBrief author;
     private String coverUrl;
+    private Long viewCount;
 }

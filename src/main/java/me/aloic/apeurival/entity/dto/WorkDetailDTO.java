@@ -16,6 +16,7 @@ public class WorkDetailDTO {
     private List<String> tags;
     private AuthorBrief author;
     private LocalDate date;
+    private Long viewCount;
 
     private CodeContent code;
     private ImageContent image;

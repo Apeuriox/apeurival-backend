@@ -27,6 +27,7 @@ public final class PostConverter
         dto.setCoverUrl(po.getCoverUrl());
         dto.setCategory(po.getCategory());
         dto.setAuthor(transformUserPOtoAuthorBrief(author));
+        dto.setViewCount(po.getViewCount());
         return dto;
     }
 
@@ -44,6 +45,7 @@ public final class PostConverter
         dto.setCoverUrl(po.getCoverUrl());
         dto.setAuthor(transformUserPOtoAuthorBrief(author));
         dto.setCategory(po.getCategory());
+        dto.setViewCount(po.getViewCount());
         if (prev != null) dto.setPrev(setupPostNeighbors(prev, lang));
         if (next != null) dto.setNext(setupPostNeighbors(next, lang));
         return dto;

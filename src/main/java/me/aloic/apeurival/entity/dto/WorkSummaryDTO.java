@@ -14,5 +14,5 @@ public class WorkSummaryDTO {
     private List<String> tags;
     private WorkDetailDTO.AuthorBrief author;
     private LocalDate date;
-
+    private Long viewCount;
 }

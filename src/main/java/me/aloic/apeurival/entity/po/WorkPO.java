@@ -26,4 +26,5 @@ public class WorkPO {
     private Integer status = 0;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private Long viewCount;
 }

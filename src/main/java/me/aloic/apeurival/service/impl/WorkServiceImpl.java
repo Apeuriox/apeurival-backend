@@ -25,6 +25,7 @@ import me.aloic.apeurival.entity.po.WorkPO;
 import me.aloic.apeurival.enums.EntityTypeEnum;
 import me.aloic.apeurival.enums.RoleEnum;
 import me.aloic.apeurival.service.OperationLogService;
+import me.aloic.apeurival.service.ViewCountService;
 import me.aloic.apeurival.service.WorkService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -47,6 +48,7 @@ public class WorkServiceImpl implements WorkService {
     private final UserMapper userMapper;
     private final OperationLogService operationLogService;
     private final ObjectMapper objectMapper;
+    private final ViewCountService viewCountService;
 
     public WorkServiceImpl(WorkMapper workMapper,
                            CodeWorkMapper codeWorkMapper,
@@ -56,7 +58,8 @@ public class WorkServiceImpl implements WorkService {
                            WorkMomentMapper workMomentMapper,
                            UserMapper userMapper,
                            OperationLogService operationLogService,
-                           ObjectMapper objectMapper) {
+                           ObjectMapper objectMapper,
+                           ViewCountService viewCountService) {
         this.workMapper = workMapper;
         this.codeWorkMapper = codeWorkMapper;
         this.imageWorkMapper = imageWorkMapper;
@@ -66,6 +69,7 @@ public class WorkServiceImpl implements WorkService {
         this.userMapper = userMapper;
         this.operationLogService = operationLogService;
         this.objectMapper = objectMapper;
+        this.viewCountService = viewCountService;
     }
 
     @Override
@@ -84,7 +88,12 @@ public class WorkServiceImpl implements WorkService {
         Page<WorkPO> result = workMapper.selectPage(poPage, wrapper);
         Page<WorkSummaryDTO> dtoPage = new Page<>(page, size, result.getTotal());
         dtoPage.setRecords(result.getRecords().stream()
-                .map(po -> WorkConverter.toSummary(po, userMapper.selectById(po.getAuthorId())))
+                .map(po -> {
+                    long merged = viewCountService.mergeWork(po.getId(),
+                            po.getViewCount() != null ? po.getViewCount() : 0);
+                    po.setViewCount(merged);
+                    return WorkConverter.toSummary(po, userMapper.selectById(po.getAuthorId()));
+                })
                 .toList());
         return dtoPage;
     }
@@ -95,6 +104,10 @@ public class WorkServiceImpl implements WorkService {
         if (po == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Work not found");
         }
+        viewCountService.incrementWork(po.getId());
+        long merged = viewCountService.mergeWork(po.getId(),
+                po.getViewCount() != null ? po.getViewCount() : 0);
+        po.setViewCount(merged);
         return buildDetail(po);
     }
 

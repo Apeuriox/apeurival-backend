@@ -20,6 +20,7 @@ public class PostDetailDTO {
     private AuthorBrief author;
     private PostDetailDTO prev;
     private PostDetailDTO next;
+    private Long viewCount;
 
     @Data
     public static class AuthorBrief {

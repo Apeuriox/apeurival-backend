@@ -47,4 +47,5 @@ public class BlogPostPO
 
       private LocalDateTime publishedAt;
 
+      private Long viewCount;
   }

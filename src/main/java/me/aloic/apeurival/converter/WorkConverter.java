@@ -27,6 +27,7 @@ public final class WorkConverter {
         dto.setTags(splitTags(po.getTags()));
         dto.setAuthor(authorBrief(author));
         dto.setDate(po.getCreatedAt().toLocalDate());
+        dto.setViewCount(po.getViewCount());
         return dto;
     }
 
@@ -43,6 +44,7 @@ public final class WorkConverter {
         dto.setTags(splitTags(po.getTags()));
         dto.setAuthor(authorBrief(author));
         dto.setDate(po.getCreatedAt().toLocalDate());
+        dto.setViewCount(po.getViewCount());
 
         if (code != null) {
             WorkDetailDTO.CodeContent c = new WorkDetailDTO.CodeContent();
