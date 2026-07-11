@@ -1,6 +1,7 @@
 package me.aloic.apeurival.scheduled;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import lombok.extern.slf4j.Slf4j;
 import me.aloic.apeurival.entity.mapper.BlogPostMapper;
 import me.aloic.apeurival.entity.mapper.WorkMapper;
@@ -37,15 +38,17 @@ public class ViewCountFlushScheduler {
     }
 
     private int flushPosts() {
-        List<BlogPostPO> all = blogPostMapper.selectList(new QueryWrapper<BlogPostPO>().select("id"));
+        List<BlogPostPO> all = blogPostMapper.selectList(
+                new QueryWrapper<BlogPostPO>().select("id", "view_count"));
         int updated = 0;
         for (BlogPostPO po : all) {
             long delta = viewCountService.getAndResetPost(po.getId());
             if (delta > 0) {
-                BlogPostPO update = new BlogPostPO();
-                update.setId(po.getId());
-                update.setViewCount(po.getViewCount() != null ? po.getViewCount() + delta : delta);
-                blogPostMapper.updateById(update);
+                long current = po.getViewCount() != null ? po.getViewCount() : 0;
+                blogPostMapper.update(null,
+                        new UpdateWrapper<BlogPostPO>()
+                                .eq("id", po.getId())
+                                .set("view_count", current + delta));
                 updated++;
             }
         }
@@ -53,15 +56,17 @@ public class ViewCountFlushScheduler {
     }
 
     private int flushWorks() {
-        List<WorkPO> all = workMapper.selectList(new QueryWrapper<WorkPO>().select("id"));
+        List<WorkPO> all = workMapper.selectList(
+                new QueryWrapper<WorkPO>().select("id", "view_count"));
         int updated = 0;
         for (WorkPO po : all) {
             long delta = viewCountService.getAndResetWork(po.getId());
             if (delta > 0) {
-                WorkPO update = new WorkPO();
-                update.setId(po.getId());
-                update.setViewCount(po.getViewCount() != null ? po.getViewCount() + delta : delta);
-                workMapper.updateById(update);
+                long current = po.getViewCount() != null ? po.getViewCount() : 0;
+                workMapper.update(null,
+                        new UpdateWrapper<WorkPO>()
+                                .eq("id", po.getId())
+                                .set("view_count", current + delta));
                 updated++;
             }
         }

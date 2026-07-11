@@ -141,6 +141,34 @@ public class VaultServiceImpl implements VaultService {
     }
 
     @Override
+    public VaultItemDTO getVaultItemById(Long id, Long currentUserId, RoleEnum userRole) {
+        VaultItemPO po = vaultItemMapper.selectById(id);
+        if (po == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Vault item not found");
+        }
+        boolean isOwner = currentUserId != null && currentUserId.equals(po.getOwnerId());
+        boolean isAdmin = userRole != null && userRole.isAdmin();
+        if (isOwner || isAdmin) {
+            return VaultConverter.setupVaultItemDTO(po, userMapper.selectById(po.getOwnerId()));
+        }
+        if (po.getGroupId() != null) {
+            checkGroupAccess(po.getGroupId(), currentUserId, userRole);
+        } else {
+            checkVisibility(po.getVisibility(), userRole);
+        }
+        return VaultConverter.setupVaultItemDTO(po, userMapper.selectById(po.getOwnerId()));
+    }
+
+    private void checkVisibility(String visibility, RoleEnum userRole) {
+        List<String> visible = userRole != null
+                ? userRole.visibleVisibilities(false)
+                : List.of("PUBLIC");
+        if (visibility == null || !visible.contains(visibility.toUpperCase())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
+        }
+    }
+
+    @Override
     public VaultItemDTO updateVaultItem(Long id, VaultItemRequest req, Long userId) {
         VaultItemPO po = vaultItemMapper.selectById(id);
         if (po == null) {

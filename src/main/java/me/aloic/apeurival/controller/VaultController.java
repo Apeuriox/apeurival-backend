@@ -8,8 +8,10 @@ import me.aloic.apeurival.entity.dto.VaultItemRequest;
 import me.aloic.apeurival.enums.RoleEnum;
 import me.aloic.apeurival.service.VaultService;
 import me.aloic.apeurival.util.CommonTool;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
@@ -68,6 +70,17 @@ public class VaultController {
         Long userId = Long.valueOf(auth.getPrincipal().toString());
         RoleEnum role = CommonTool.extractRole(auth);
         return vaultService.batchCreate(requests, userId, role);
+    }
+
+    @GetMapping("/item/{id}")
+    public VaultItemDTO getItemById(@PathVariable Long id, Authentication auth) {
+        log.info("[GET] handling getItemById /api/vault/item/{}", id);
+        if (auth == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Permission Denied");
+        }
+        Long userId = Long.valueOf(auth.getPrincipal().toString());
+        RoleEnum role = CommonTool.extractRole(auth);
+        return vaultService.getVaultItemById(id, userId, role);
     }
 
     @PutMapping("/{id}")

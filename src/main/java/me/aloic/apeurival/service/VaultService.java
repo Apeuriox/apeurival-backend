@@ -21,6 +21,8 @@ public interface VaultService {
 
     List<VaultItemDTO> batchCreate(List<VaultItemRequest> requests, Long ownerId, RoleEnum userRole);
 
+    VaultItemDTO getVaultItemById(Long id, Long currentUserId, RoleEnum userRole);
+
     VaultItemDTO updateVaultItem(Long id, VaultItemRequest request, Long userId);
 
     void deleteVaultItem(Long id, Long userId);
