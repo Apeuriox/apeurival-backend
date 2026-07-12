@@ -3,6 +3,7 @@ package me.aloic.apeurival.service;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import me.aloic.apeurival.entity.po.OperationLogPO;
 import me.aloic.apeurival.entity.po.UploadMetaPO;
+import me.aloic.apeurival.entity.dto.UserDTO;
 
 import java.util.List;
 import java.util.Map;
@@ -18,4 +19,10 @@ public interface AdminService {
     int bindAndCleanUploads();
 
     void invalidateUserTokens(Long userId);
+
+    Page<UserDTO> listUsers(String query, String role, int page, int size);
+
+    UserDTO getUser(Long userId);
+
+    UserDTO updateUserRole(Long userId, String role, Long operatorId);
 }

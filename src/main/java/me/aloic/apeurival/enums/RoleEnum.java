@@ -13,6 +13,7 @@ public enum RoleEnum {
 
     USER("USER", "User", 0),
     OSU("OSU", "User", 10),
+    LIBRARIAN("LIBRARIAN", "Librarian", 30),
     EDITOR("EDITOR", "Editor", 50),
     ADMIN("ADMIN", "Admin", 100);
 
@@ -46,12 +47,6 @@ public enum RoleEnum {
         return new SimpleGrantedAuthority("ROLE_" + this.name());
     }
 
-    public List<String> visibleVisibilities(boolean isOwner) {
-        if (isOwner || this.level >= L_ADMIN) return List.of("PUBLIC", "MEMBERS", "RESTRICTED", "PRIVATE");
-        if (this.level >= L_EDITOR)            return List.of("PUBLIC", "MEMBERS", "RESTRICTED");
-        return List.of("PUBLIC", "MEMBERS");
-    }
-
     public boolean canAssignExternalAuthor() {
         return this.level >= L_EDITOR;
     }
@@ -70,6 +65,10 @@ public enum RoleEnum {
 
     public boolean isAtLeastEditor() {
         return this.level >= L_EDITOR;
+    }
+
+    public boolean isAtLeastLibrarian() {
+        return this.level >= LIBRARIAN.level;
     }
 
     public boolean isOsuOrAbove() {

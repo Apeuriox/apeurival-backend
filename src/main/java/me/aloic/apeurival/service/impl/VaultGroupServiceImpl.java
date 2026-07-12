@@ -56,9 +56,21 @@ public class VaultGroupServiceImpl implements VaultGroupService {
 
     @Override
     public List<VaultGroupDTO> listAllVaultGroup(Long currentUserId, RoleEnum userRole) {
-        boolean isAdmin = userRole != null && userRole.isAdmin();
-        return groupMapper.selectList(new QueryWrapper<>()).stream()
-                .map(po -> setupVaultGroup(po, currentUserId, isAdmin))
+        if (userRole == null || !userRole.isOsuOrAbove()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Permission Denied");
+        }
+        boolean canBrowseAll = userRole.isAtLeastLibrarian();
+        List<Long> memberGroupIds = memberMapper.selectList(
+                        new QueryWrapper<VaultGroupMemberPO>().eq("user_id", currentUserId)).stream()
+                .map(VaultGroupMemberPO::getGroupId)
+                .distinct()
+                .toList();
+        List<VaultGroupPO> groups = canBrowseAll
+                ? groupMapper.selectList(new QueryWrapper<>())
+                : memberGroupIds.isEmpty() ? List.of()
+                : groupMapper.selectBatchIds(memberGroupIds);
+        return groups.stream()
+                .map(po -> setupVaultGroup(po, currentUserId, canBrowseAll))
                 .toList();
     }
 
@@ -123,6 +135,10 @@ public class VaultGroupServiceImpl implements VaultGroupService {
         {
             log.info("user role is ADMIN, userid: {}",userId);
             return;
+        }
+        if (userRole == null || !userRole.isAtLeastEditor()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Group management requires EDITOR role or above");
         }
         VaultGroupMemberPO self = memberMapper.selectOne(
                 new QueryWrapper<VaultGroupMemberPO>()

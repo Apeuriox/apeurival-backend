@@ -54,11 +54,16 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PUT, "/api/works/**").hasAnyRole(RoleEnum.EDITOR.getRoleString(), RoleEnum.ADMIN.getRoleString())
                 .requestMatchers(HttpMethod.DELETE, "/api/works/**").hasAnyRole(RoleEnum.EDITOR.getRoleString(), RoleEnum.ADMIN.getRoleString())
                 .requestMatchers("/api/upload/**").hasAnyRole(RoleEnum.EDITOR.getRoleString(), RoleEnum.ADMIN.getRoleString())
-                .requestMatchers(HttpMethod.GET, "/api/vault/groups").authenticated()
-                .requestMatchers(HttpMethod.GET, "/api/vault/**").hasAnyRole(RoleEnum.OSU.name(), RoleEnum.EDITOR.name(), RoleEnum.ADMIN.name())
-                .requestMatchers(HttpMethod.POST, "/api/vault/**").authenticated()
-                .requestMatchers(HttpMethod.PUT, "/api/vault/**").authenticated()
-                .requestMatchers(HttpMethod.DELETE, "/api/vault/**").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/vault/**").hasAnyRole(
+                        RoleEnum.OSU.name(), RoleEnum.LIBRARIAN.name(),
+                        RoleEnum.EDITOR.name(), RoleEnum.ADMIN.name())
+                .requestMatchers(HttpMethod.POST, "/api/vault/groups").hasRole(RoleEnum.ADMIN.name())
+                .requestMatchers(HttpMethod.POST, "/api/vault/**").hasAnyRole(
+                        RoleEnum.EDITOR.name(), RoleEnum.ADMIN.name())
+                .requestMatchers(HttpMethod.PUT, "/api/vault/**").hasAnyRole(
+                        RoleEnum.EDITOR.name(), RoleEnum.ADMIN.name())
+                .requestMatchers(HttpMethod.DELETE, "/api/vault/**").hasAnyRole(
+                        RoleEnum.EDITOR.name(), RoleEnum.ADMIN.name())
                 .requestMatchers("/api/admin/**").hasRole(RoleEnum.ADMIN.getRoleString())
                 .anyRequest().authenticated()
             )

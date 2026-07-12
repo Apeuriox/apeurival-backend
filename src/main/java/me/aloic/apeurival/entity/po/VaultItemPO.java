@@ -22,6 +22,6 @@ public class VaultItemPO {
     private String imageUrl;
     private String label;
     private Long groupId;
-    private String visibility;  // PUBLIC | MEMBERS | RESTRICTED | PRIVATE
+    private String visibility;  // PUBLIC | RESTRICTED | EDITOR_ONLY | PRIVATE
     private LocalDateTime createdAt;
 }

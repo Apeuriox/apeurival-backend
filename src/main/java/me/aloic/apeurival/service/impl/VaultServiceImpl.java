@@ -1,6 +1,5 @@
 package me.aloic.apeurival.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -9,14 +8,13 @@ import me.aloic.apeurival.entity.dto.VaultAuthorDTO;
 import me.aloic.apeurival.entity.dto.VaultItemDTO;
 import me.aloic.apeurival.entity.dto.VaultItemRequest;
 import me.aloic.apeurival.entity.mapper.UserMapper;
-import me.aloic.apeurival.entity.mapper.VaultGroupMemberMapper;
 import me.aloic.apeurival.entity.mapper.VaultItemMapper;
 import me.aloic.apeurival.entity.po.UserPO;
-import me.aloic.apeurival.entity.po.VaultGroupMemberPO;
 import me.aloic.apeurival.entity.po.VaultItemPO;
 import me.aloic.apeurival.enums.EntityTypeEnum;
 import me.aloic.apeurival.enums.RoleEnum;
 import me.aloic.apeurival.service.OperationLogService;
+import me.aloic.apeurival.service.VaultAccessPolicy;
 import me.aloic.apeurival.service.VaultService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -35,17 +33,17 @@ public class VaultServiceImpl implements VaultService {
 
     private final VaultItemMapper vaultItemMapper;
     private final UserMapper userMapper;
-    private final VaultGroupMemberMapper groupMemberMapper;
+    private final VaultAccessPolicy accessPolicy;
     private final OperationLogService operationLogService;
     private final ObjectMapper objectMapper;
 
     public VaultServiceImpl(VaultItemMapper vaultItemMapper,
-                            VaultGroupMemberMapper groupMemberMapper,
+                            VaultAccessPolicy accessPolicy,
                             UserMapper userMapper,
                             OperationLogService operationLogService,
                             ObjectMapper objectMapper) {
         this.vaultItemMapper = vaultItemMapper;
-        this.groupMemberMapper = groupMemberMapper;
+        this.accessPolicy = accessPolicy;
         this.userMapper = userMapper;
         this.operationLogService = operationLogService;
         this.objectMapper = objectMapper;
@@ -55,10 +53,12 @@ public class VaultServiceImpl implements VaultService {
     @Override
     public Page<VaultAuthorDTO> listAuthors(Long groupId, int page, int size, Long currentUserId, RoleEnum userRole) {
         if (groupId != null) {
-            checkGroupAccess(groupId, currentUserId, userRole);
+            accessPolicy.requireGroupBrowse(groupId, currentUserId, userRole);
         }
+        List<String> visibilities = accessPolicy.visibleDatabaseValues(userRole);
         Page<Map<String, Object>> rawPage = new Page<>(page, size);
-        Page<Map<String, Object>> raw = vaultItemMapper.countByAuthorsPage(rawPage,groupId);
+        Page<Map<String, Object>> raw = vaultItemMapper.countByAuthorsPage(
+                rawPage, groupId, currentUserId, visibilities);
 
         List<VaultAuthorDTO> records = new ArrayList<>();
         for (Map<String, Object> row : raw.getRecords()) {
@@ -91,21 +91,17 @@ public class VaultServiceImpl implements VaultService {
                                                                RoleEnum userRole, Long currentUserId,
                                                                int page, int size) {
         if (groupId != null) {
-            checkGroupAccess(groupId, currentUserId, userRole);
+            accessPolicy.requireGroupBrowse(groupId, currentUserId, userRole);
         }
-        boolean isOwner = currentUserId != null && currentUserId.equals(ownerId);
         Page<VaultItemPO> poPage = new Page<>(page, size);
-        List<String> visibilities;
-        if (userRole == null) {
-            visibilities = List.of("PUBLIC");
-        } else {
-            visibilities = userRole.visibleVisibilities(isOwner);
-        }
+        List<String> visibilities = accessPolicy.visibleDatabaseValues(userRole);
         Page<VaultItemPO> result;
         if (groupId != null) {
-            result = vaultItemMapper.selectGroupItemsPage(poPage, groupId, ownerId , authorName, visibilities);
+            result = vaultItemMapper.selectGroupItemsPage(
+                    poPage, groupId, ownerId, authorName, currentUserId, visibilities);
         } else {
-            result = vaultItemMapper.selectNonGroupItemsPage(poPage, ownerId, authorName, visibilities);
+            result = vaultItemMapper.selectNonGroupItemsPage(
+                    poPage, ownerId, authorName, currentUserId, visibilities);
         }
 
         UserPO owner = ownerId != null ? userMapper.selectById(ownerId) : null;
@@ -118,6 +114,8 @@ public class VaultServiceImpl implements VaultService {
 
     @Override
     public VaultItemDTO createSingleVaultItem(VaultItemRequest req, Long ownerId, RoleEnum userRole) {
+        accessPolicy.requireVaultWrite(userRole);
+        if (req.getGroupId() != null) accessPolicy.requireGroupWrite(req.getGroupId(), ownerId, userRole);
         validateAuthorName(req.getAuthorName(), userRole);
         VaultItemPO po = insertOne(req, ownerId);
         operationLogService.logCreate(EntityTypeEnum.VAULT_ITEM.getCode(), po.getId(), ownerId, po);
@@ -127,10 +125,15 @@ public class VaultServiceImpl implements VaultService {
     @Override
     @Transactional
     public List<VaultItemDTO> batchCreate(List<VaultItemRequest> requests, Long ownerId, RoleEnum userRole) {
+        accessPolicy.requireVaultWrite(userRole);
+        if (requests == null || requests.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Requests must not be empty");
+        }
         validateAuthorName(requests.getFirst().getAuthorName(), userRole);
         UserPO owner = userMapper.selectById(ownerId);
         List<VaultItemDTO> result = new ArrayList<>();
         for (VaultItemRequest req : requests) {
+            if (req.getGroupId() != null) accessPolicy.requireGroupWrite(req.getGroupId(), ownerId, userRole);
             VaultItemPO po = insertOne(req, ownerId);
             result.add(VaultConverter.setupVaultItemDTO(po, owner));
             operationLogService.logCreate(EntityTypeEnum.VAULT_ITEM.getCode(), po.getId(), ownerId, po);
@@ -146,30 +149,13 @@ public class VaultServiceImpl implements VaultService {
         if (po == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Vault item not found");
         }
-        boolean isOwner = currentUserId != null && currentUserId.equals(po.getOwnerId());
-        boolean isAdmin = userRole != null && userRole.isAdmin();
-        if (isOwner || isAdmin) {
-            return VaultConverter.setupVaultItemDTO(po, userMapper.selectById(po.getOwnerId()));
-        }
-        if (po.getGroupId() != null) {
-            checkGroupAccess(po.getGroupId(), currentUserId, userRole);
-        } else {
-            checkVisibility(po.getVisibility(), userRole);
-        }
+        accessPolicy.requireItemRead(po, currentUserId, userRole);
         return VaultConverter.setupVaultItemDTO(po, userMapper.selectById(po.getOwnerId()));
-    }
-
-    private void checkVisibility(String visibility, RoleEnum userRole) {
-        List<String> visible = userRole != null
-                ? userRole.visibleVisibilities(false)
-                : List.of("PUBLIC");
-        if (visibility == null || !visible.contains(visibility.toUpperCase())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
-        }
     }
 
     @Override
     public VaultItemDTO updateVaultItem(Long id, VaultItemRequest req, Long userId) {
+        requireVaultWriteAccess(userId);
         VaultItemPO po = vaultItemMapper.selectById(id);
         if (po == null) {
             log.warn("Updated failed cuz no such vault item: {}", id);
@@ -179,7 +165,9 @@ public class VaultServiceImpl implements VaultService {
         VaultItemPO oldPo = clonePo(po);
         if (req.getImageUrl() != null) po.setImageUrl(req.getImageUrl());
         if (req.getLabel() != null) po.setLabel(req.getLabel());
-        if (req.getVisibility() != null) po.setVisibility(req.getVisibility().toUpperCase());
+        if (req.getVisibility() != null) {
+            po.setVisibility(accessPolicy.normalizeWritableVisibility(req.getVisibility()));
+        }
         vaultItemMapper.updateById(po);
         log.info("Successfully updated vault item: {}", id);
         operationLogService.logUpdate(EntityTypeEnum.VAULT_ITEM.getCode(), id, userId, po, oldPo);
@@ -188,6 +176,7 @@ public class VaultServiceImpl implements VaultService {
 
     @Override
     public void deleteVaultItem(Long id, Long userId) {
+        requireVaultWriteAccess(userId);
         VaultItemPO po = vaultItemMapper.selectById(id);
         if (po == null) {
             log.warn("Deletion failed cuz no such vault item: {}", id);
@@ -202,6 +191,7 @@ public class VaultServiceImpl implements VaultService {
     @Override
     @Transactional
     public int batchDelete(List<Long> ids, Long userId) {
+        requireVaultWriteAccess(userId);
         int count = 0;
         for (Long id : ids) {
             VaultItemPO po = vaultItemMapper.selectById(id);
@@ -219,8 +209,9 @@ public class VaultServiceImpl implements VaultService {
     @Override
     @Transactional
     public int batchSetVisibility(List<Long> ids, String visibility, Long userId) {
+        requireVaultWriteAccess(userId);
         int count = 0;
-        String vis = visibility.toUpperCase();
+        String vis = accessPolicy.normalizeWritableVisibility(visibility);
         for (Long id : ids) {
             VaultItemPO po = vaultItemMapper.selectById(id);
             if (po == null) continue;
@@ -239,7 +230,7 @@ public class VaultServiceImpl implements VaultService {
         po.setImageUrl(req.getImageUrl());
         po.setLabel(req.getLabel());
         po.setGroupId(req.getGroupId());
-        po.setVisibility(req.getVisibility() != null ? req.getVisibility().toUpperCase() : "PUBLIC");
+        po.setVisibility(accessPolicy.normalizeWritableVisibility(req.getVisibility()));
         po.setCreatedAt(LocalDateTime.now());
         vaultItemMapper.insert(po);
         return po;
@@ -252,14 +243,10 @@ public class VaultServiceImpl implements VaultService {
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only manage your own vault items");
     }
 
-    private void checkGroupAccess(Long groupId, Long userId, RoleEnum userRole) {
-        if (userRole != null && userRole.isAdmin()) return;
-        if (groupMemberMapper.exists(
-                new QueryWrapper<VaultGroupMemberPO>()
-                        .eq("group_id", groupId).eq("user_id", userId))) {
-            return;
-        }
-        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not a member of this group");
+    private void requireVaultWriteAccess(Long userId) {
+        UserPO caller = userMapper.selectById(userId);
+        RoleEnum role = caller == null ? null : RoleEnum.fromString(caller.getRole());
+        accessPolicy.requireVaultWrite(role);
     }
 
     private void validateAuthorName(String authorName, RoleEnum userRole) {

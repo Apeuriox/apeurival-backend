@@ -12,7 +12,10 @@ import java.util.Map;
 @Mapper
 public interface VaultItemMapper extends BaseMapper<VaultItemPO> {
 
-    Page<Map<String, Object>> countByAuthorsPage(Page<?> page, @Param("groupId") Long groupId);
+    Page<Map<String, Object>> countByAuthorsPage(Page<?> page,
+                                                 @Param("groupId") Long groupId,
+                                                 @Param("currentUserId") Long currentUserId,
+                                                 @Param("visibilities") List<String> visibilities);
 
     List<Map<String, Object>> countByAuthorsWithGroups(@Param("groupId") Long groupId,
                                                        @Param("visibilities") java.util.List<String> visibilities);
@@ -21,10 +24,12 @@ public interface VaultItemMapper extends BaseMapper<VaultItemPO> {
                                            @Param("groupId") Long groupId,
                                            @Param("ownerId") Long ownerId,
                                            @Param("authorName") String authorName,
+                                           @Param("currentUserId") Long currentUserId,
                                            @Param("visibilities") java.util.List<String> visibilities);
 
     Page<VaultItemPO> selectNonGroupItemsPage(Page<VaultItemPO> page,
                                               @Param("ownerId") Long ownerId,
                                               @Param("authorName") String authorName,
+                                              @Param("currentUserId") Long currentUserId,
                                               @Param("visibilities") java.util.List<String> visibilities);
 }

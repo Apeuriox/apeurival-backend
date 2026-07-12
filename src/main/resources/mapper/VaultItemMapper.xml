@@ -12,6 +12,14 @@
             <if test="groupId == null">
                 group_id IS NULL
             </if>
+            AND (visibility IN
+            <foreach collection="visibilities" item="v" open="(" separator="," close=")">
+                #{v}
+            </foreach>
+            <if test="currentUserId != null">
+                OR owner_id = #{currentUserId}
+            </if>
+            )
         </where>
         GROUP BY owner_id, author_name
     </select>
@@ -47,10 +55,14 @@
         <if test="authorName != null and authorName != ''">
             AND author_name = #{authorName}
         </if>
-        AND visibility IN
+        AND (visibility IN
         <foreach collection="visibilities" item="v" open="(" separator="," close=")">
             #{v}
         </foreach>
+        <if test="currentUserId != null">
+            OR owner_id = #{currentUserId}
+        </if>
+        )
         ORDER BY created_at DESC
     </select>
 
@@ -64,10 +76,14 @@
         <if test="authorName != null and authorName != ''">
             AND author_name = #{authorName}
         </if>
-        AND visibility IN
+        AND (visibility IN
         <foreach collection="visibilities" item="v" open="(" separator="," close=")">
             #{v}
         </foreach>
+        <if test="currentUserId != null">
+            OR owner_id = #{currentUserId}
+        </if>
+        )
         ORDER BY created_at DESC
     </select>
 
